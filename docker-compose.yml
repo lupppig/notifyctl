@@ -28,5 +28,29 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  nats:
+    image: nats:2-alpine
+    container_name: notifyctl-nats
+    restart: unless-stopped
+    command: ["--jetstream", "--store_dir=/data"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "nats-server", "--help"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   postgres_data:
+  nats_data:
