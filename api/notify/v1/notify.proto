@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package notify.v1;
+
+option go_package = "github.com/lupppig/notifyctl/pkg/grpc/notify/v1;notifyv1";
+
+service NotifyService {
+  rpc RegisterService(RegisterServiceRequest) returns (RegisterServiceResponse);
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
+  rpc StreamDeliveryStatus(StreamDeliveryStatusRequest) returns (stream DeliveryStatusEvent);
+}
+
+// RegisterService messages
+
+message RegisterServiceRequest {
+  string name = 1;
+  string webhook_url = 2;
+  string secret = 3;
+}
+
+message RegisterServiceResponse {
+  string service_id = 1;
+  string api_key = 2;
+}
+
+// SendNotification messages
+
+message SendNotificationRequest {
+  string service_id = 1;
+  string topic = 2;
+  bytes payload = 3;
+  repeated Destination destinations = 4;
+}
+
+message Destination {
+  DestinationType type = 1;
+  string target = 2;
+}
+
+enum DestinationType {
+  DESTINATION_TYPE_UNSPECIFIED = 0;
+  DESTINATION_TYPE_WEBHOOK = 1;
+  DESTINATION_TYPE_EMAIL = 2;
+}
+
+message SendNotificationResponse {
+  string notification_id = 1;
+}
+
+// StreamDeliveryStatus messages
+
+message StreamDeliveryStatusRequest {
+  string notification_id = 1;
+  string service_id = 2;
+}
+
+message DeliveryStatusEvent {
+  string notification_id = 1;
+  string destination = 2;
+  DeliveryStatus status = 3;
+  string message = 4;
+  int32 attempt = 5;
+}
+
+enum DeliveryStatus {
+  DELIVERY_STATUS_UNSPECIFIED = 0;
+  DELIVERY_STATUS_PENDING = 1;
+  DELIVERY_STATUS_DELIVERING = 2;
+  DELIVERY_STATUS_DELIVERED = 3;
+  DELIVERY_STATUS_FAILED = 4;
+  DELIVERY_STATUS_RETRYING = 5;
+}
