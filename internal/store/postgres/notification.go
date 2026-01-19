@@ -41,3 +41,32 @@ func (s *NotificationStore) Create(ctx context.Context, n *domain.Notification) 
 
 	return nil
 }
+
+func (s *NotificationStore) GetByID(ctx context.Context, id string) (*domain.Notification, error) {
+	query := `
+		SELECT id, service_id, topic, payload, destinations, created_at
+		FROM notifications
+		WHERE id = $1
+	`
+
+	var n domain.Notification
+	var destinationsJSON []byte
+
+	err := s.db.Pool.QueryRow(ctx, query, id).Scan(
+		&n.ID,
+		&n.ServiceID,
+		&n.Topic,
+		&n.Payload,
+		&destinationsJSON,
+		&n.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get notification: %w", err)
+	}
+
+	if err := json.Unmarshal(destinationsJSON, &n.Destinations); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal destinations: %w", err)
+	}
+
+	return &n, nil
+}

@@ -12,4 +12,9 @@ type ServiceStore interface {
 
 type NotificationStore interface {
 	Create(ctx context.Context, n *domain.Notification) error
+	GetByID(ctx context.Context, id string) (*domain.Notification, error)
+}
+
+type DeliveryAttemptStore interface {
+	Create(ctx context.Context, attempt *domain.DeliveryAttempt) error
 }

@@ -48,8 +48,20 @@ func (db *DB) Migrate(ctx context.Context) error {
 			created_at   TIMESTAMPTZ DEFAULT NOW()
 		);
 
+		CREATE TABLE IF NOT EXISTS delivery_attempts (
+			id              TEXT PRIMARY KEY,
+			notification_id TEXT REFERENCES notifications(id),
+			destination     TEXT NOT NULL,
+			status          TEXT NOT NULL,
+			status_code     INT,
+			response_body   TEXT,
+			error           TEXT,
+			attempted_at    TIMESTAMPTZ DEFAULT NOW()
+		);
+
 		CREATE INDEX IF NOT EXISTS idx_notifications_service_id ON notifications(service_id);
 		CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+		CREATE INDEX IF NOT EXISTS idx_delivery_attempts_notification_id ON delivery_attempts(notification_id);
 	`
 
 	_, err := db.Pool.Exec(ctx, schema)
