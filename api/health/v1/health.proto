@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package health.v1;
+
+option go_package = "github.com/lupppig/notifyctl/pkg/grpc/health/v1;healthv1";
+
+service HealthService {
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+}
