@@ -9,20 +9,25 @@ import (
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go/jetstream"
 
+	"github.com/lupppig/notifyctl/internal/broker"
 	"github.com/lupppig/notifyctl/internal/domain"
 	"github.com/lupppig/notifyctl/internal/httpclient"
+	"github.com/lupppig/notifyctl/internal/retry"
 	"github.com/lupppig/notifyctl/internal/store"
 )
 
 type WebhookWorker struct {
-	notifications store.NotificationStore
-	attempts      store.DeliveryAttemptStore
-	httpClient    *httpclient.Client
-	consumer      jetstream.Consumer
+	notifications  store.NotificationStore
+	attempts       store.DeliveryAttemptStore
+	httpClient     *httpclient.Client
+	consumer       jetstream.Consumer
+	publisher      broker.Publisher
+	retryScheduler *retry.Scheduler
 }
 
 type notificationMessage struct {
 	NotificationID string `json:"notification_id"`
+	AttemptCount   int    `json:"attempt_count"`
 }
 
 func NewWebhookWorker(
@@ -30,12 +35,16 @@ func NewWebhookWorker(
 	attempts store.DeliveryAttemptStore,
 	httpClient *httpclient.Client,
 	consumer jetstream.Consumer,
+	publisher broker.Publisher,
+	retryScheduler *retry.Scheduler,
 ) *WebhookWorker {
 	return &WebhookWorker{
-		notifications: notifications,
-		attempts:      attempts,
-		httpClient:    httpClient,
-		consumer:      consumer,
+		notifications:  notifications,
+		attempts:       attempts,
+		httpClient:     httpClient,
+		consumer:       consumer,
+		publisher:      publisher,
+		retryScheduler: retryScheduler,
 	}
 }
 
@@ -73,18 +82,40 @@ func (w *WebhookWorker) processMessage(ctx context.Context, msg jetstream.Msg) {
 		return
 	}
 
+	allSucceeded := true
 	for _, dest := range notification.Destinations {
 		if dest.Type != domain.DestinationTypeWebhook {
 			continue
 		}
 
-		w.deliverWebhook(ctx, notification, dest)
+		success := w.deliverWebhook(ctx, notification, dest, nm.AttemptCount)
+		if !success {
+			allSucceeded = false
+		}
 	}
 
-	msg.Ack()
+	if allSucceeded {
+		msg.Ack()
+		return
+	}
+
+	// Handle retry or DLQ for failed deliveries
+	nm.AttemptCount++
+	if w.retryScheduler.ShouldRetry(nm.AttemptCount) {
+		delay := w.retryScheduler.NextDelay(nm.AttemptCount)
+		log.Printf("scheduling retry %d for notification %s in %v", nm.AttemptCount, nm.NotificationID, delay)
+		msg.NakWithDelay(delay)
+	} else {
+		log.Printf("max retries reached for notification %s, moving to DLQ", nm.NotificationID)
+		dlqData, _ := json.Marshal(nm)
+		if err := w.publisher.PublishToDLQ(ctx, dlqData); err != nil {
+			log.Printf("failed to publish to DLQ: %v", err)
+		}
+		msg.Ack()
+	}
 }
 
-func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notification, dest domain.Destination) {
+func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notification, dest domain.Destination, attemptCount int) bool {
 	attempt := &domain.DeliveryAttempt{
 		ID:             uuid.New().String(),
 		NotificationID: n.ID,
@@ -110,4 +141,6 @@ func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notificati
 	if err := w.attempts.Create(ctx, attempt); err != nil {
 		log.Printf("failed to record delivery attempt: %v", err)
 	}
+
+	return attempt.Status == domain.DeliveryStatusSuccess
 }

@@ -11,12 +11,16 @@ import (
 const (
 	StreamName     = "NOTIFICATIONS"
 	StreamSubjects = "notifications.>"
+
+	DLQStreamName    = "NOTIFICATIONS_DLQ"
+	DLQStreamSubject = "notifications.dlq"
 )
 
 type Publisher struct {
-	conn   *nats.Conn
-	js     jetstream.JetStream
-	stream jetstream.Stream
+	conn      *nats.Conn
+	js        jetstream.JetStream
+	stream    jetstream.Stream
+	dlqStream jetstream.Stream
 }
 
 func New(ctx context.Context, url string) (*Publisher, error) {
@@ -40,10 +44,20 @@ func New(ctx context.Context, url string) (*Publisher, error) {
 		return nil, fmt.Errorf("failed to create stream: %w", err)
 	}
 
+	dlqStream, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+		Name:     DLQStreamName,
+		Subjects: []string{DLQStreamSubject},
+	})
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to create DLQ stream: %w", err)
+	}
+
 	return &Publisher{
-		conn:   conn,
-		js:     js,
-		stream: stream,
+		conn:      conn,
+		js:        js,
+		stream:    stream,
+		dlqStream: dlqStream,
 	}, nil
 }
 
@@ -51,6 +65,14 @@ func (p *Publisher) Publish(ctx context.Context, subject string, data []byte) er
 	_, err := p.js.Publish(ctx, subject, data)
 	if err != nil {
 		return fmt.Errorf("failed to publish message: %w", err)
+	}
+	return nil
+}
+
+func (p *Publisher) PublishToDLQ(ctx context.Context, data []byte) error {
+	_, err := p.js.Publish(ctx, DLQStreamSubject, data)
+	if err != nil {
+		return fmt.Errorf("failed to publish to DLQ: %w", err)
 	}
 	return nil
 }
