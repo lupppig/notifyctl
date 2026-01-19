@@ -11,6 +11,7 @@ import (
 
 	"github.com/lupppig/notifyctl/internal/broker"
 	"github.com/lupppig/notifyctl/internal/domain"
+	"github.com/lupppig/notifyctl/internal/events"
 	"github.com/lupppig/notifyctl/internal/httpclient"
 	"github.com/lupppig/notifyctl/internal/retry"
 	"github.com/lupppig/notifyctl/internal/store"
@@ -23,6 +24,7 @@ type WebhookWorker struct {
 	consumer       jetstream.Consumer
 	publisher      broker.Publisher
 	retryScheduler *retry.Scheduler
+	eventHub       *events.Hub
 }
 
 type notificationMessage struct {
@@ -37,6 +39,7 @@ func NewWebhookWorker(
 	consumer jetstream.Consumer,
 	publisher broker.Publisher,
 	retryScheduler *retry.Scheduler,
+	eventHub *events.Hub,
 ) *WebhookWorker {
 	return &WebhookWorker{
 		notifications:  notifications,
@@ -45,6 +48,7 @@ func NewWebhookWorker(
 		consumer:       consumer,
 		publisher:      publisher,
 		retryScheduler: retryScheduler,
+		eventHub:       eventHub,
 	}
 }
 
@@ -104,6 +108,9 @@ func (w *WebhookWorker) processMessage(ctx context.Context, msg jetstream.Msg) {
 	if w.retryScheduler.ShouldRetry(nm.AttemptCount) {
 		delay := w.retryScheduler.NextDelay(nm.AttemptCount)
 		log.Printf("scheduling retry %d for notification %s in %v", nm.AttemptCount, nm.NotificationID, delay)
+
+		w.emitEvent(notification, "", events.DeliveryStatusRetrying, "Scheduling retry", nm.AttemptCount)
+
 		msg.NakWithDelay(delay)
 	} else {
 		log.Printf("max retries reached for notification %s, moving to DLQ", nm.NotificationID)
@@ -123,18 +130,27 @@ func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notificati
 		AttemptedAt:    time.Now(),
 	}
 
+	// Emit PENDING event
+	w.emitEvent(n, dest.Target, events.DeliveryStatusPending, "Starting delivery", attemptCount)
+
+	// Emit DELIVERING event
+	w.emitEvent(n, dest.Target, events.DeliveryStatusDelivering, "Sending HTTP request", attemptCount)
+
 	resp, err := w.httpClient.Post(ctx, dest.Target, n.Payload)
 	if err != nil {
 		attempt.Status = domain.DeliveryStatusFailed
 		attempt.Error = err.Error()
+		w.emitEvent(n, dest.Target, events.DeliveryStatusFailed, err.Error(), attemptCount)
 	} else {
 		attempt.StatusCode = resp.StatusCode
 		attempt.ResponseBody = resp.Body
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			attempt.Status = domain.DeliveryStatusSuccess
+			w.emitEvent(n, dest.Target, events.DeliveryStatusDelivered, "Delivery successful", attemptCount)
 		} else {
 			attempt.Status = domain.DeliveryStatusFailed
+			w.emitEvent(n, dest.Target, events.DeliveryStatusFailed, resp.Body, attemptCount)
 		}
 	}
 
@@ -143,4 +159,20 @@ func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notificati
 	}
 
 	return attempt.Status == domain.DeliveryStatusSuccess
+}
+
+func (w *WebhookWorker) emitEvent(n *domain.Notification, destination string, status events.DeliveryStatus, message string, attempt int) {
+	if w.eventHub == nil {
+		return
+	}
+
+	w.eventHub.Publish(events.DeliveryEvent{
+		NotificationID: n.ID,
+		ServiceID:      n.ServiceID,
+		Destination:    destination,
+		Status:         status,
+		Message:        message,
+		Attempt:        attempt,
+		Timestamp:      time.Now(),
+	})
 }
