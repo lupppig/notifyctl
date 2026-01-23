@@ -91,28 +91,33 @@ func (s *Scheduler) processRetries(ctx context.Context) {
 
 	for _, job := range jobs {
 		if !s.ShouldRetry(job.RetryCount) {
-			log.Printf("Job %s exceeded max retries (%d), marking as terminal failure", job.RequestID, s.config.MaxAttempts)
+			log.Printf("[%s] ACTION: Terminal Failure | Job %s exceeded max retries (%d)",
+				time.Now().Format(time.RFC3339), job.RequestID, s.config.MaxAttempts)
 			continue
 		}
 
 		nextDelay := s.NextDelay(job.RetryCount)
-		log.Printf("Retrying job %s (attempt %d/%d) in %v", job.RequestID, job.RetryCount+1, s.config.MaxAttempts, nextDelay)
+		log.Printf("[%s] ACTION: Re-enqueueing Job | ID: %s | Attempt: %d/%d | Next Delay: %v",
+			time.Now().Format(time.RFC3339), job.RequestID, job.RetryCount+1, s.config.MaxAttempts, nextDelay)
 
 		// Re-publish to NATS
 		data, err := json.Marshal(job)
 		if err != nil {
-			log.Printf("Error marshaling job %s: %v", job.RequestID, err)
+			log.Printf("[ERROR] Failed to marshal job %s: %v", job.RequestID, err)
 			continue
 		}
 
 		if err := s.nc.Publish("notifications.jobs", data); err != nil {
-			log.Printf("Error publishing job %s to NATS: %v", job.RequestID, err)
+			log.Printf("[ERROR] Failed to publish job %s to NATS: %v", job.RequestID, err)
 			continue
 		}
 
 		// Update status to PENDING
 		if err := s.jobStore.UpdateStatus(ctx, job.RequestID, "PENDING"); err != nil {
-			log.Printf("Error updating job %s status to PENDING: %v", job.RequestID, err)
+			log.Printf("[ERROR] Failed to update status to PENDING for job %s: %v", job.RequestID, err)
+		} else {
+			log.Printf("[%s] SUCCESS: Job %s re-enqueued and status updated to PENDING",
+				time.Now().Format(time.RFC3339), job.RequestID)
 		}
 	}
 }

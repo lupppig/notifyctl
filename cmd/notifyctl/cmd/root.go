@@ -66,14 +66,17 @@ Send events, manage destinations, and monitor delivery status in real-time.`,
 			cfg.ServiceID = globalServiceID
 		}
 
-		// Commands that don't require pre-configured auth/context
-		if cmd.Name() == "version" || cmd.Name() == "create" {
+		// Commands that don't require pre-configured auth/context or handle it themselves
+		if cmd.Name() == "version" || cmd.Name() == "create" || cmd.Name() == "logs" {
 			return initGRPCClient()
 		}
 
-		// Service management commands shouldn't be blocked by a missing ServiceID
-		// as they either create them, list them, or take an ID as a flag.
+		// Service management commands
 		if cmd.Parent() != nil && cmd.Parent().Name() == "service" {
+			// List doesn't require auth on server now
+			if cmd.Name() == "list" {
+				return initGRPCClient()
+			}
 			if cfg.APIKey == "" {
 				return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use --auth-token)")
 			}
@@ -83,7 +86,7 @@ Send events, manage destinations, and monitor delivery status in real-time.`,
 		if cfg.APIKey == "" {
 			return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use --auth-token)")
 		}
-		if cfg.ServiceID == "" {
+		if cfg.ServiceID == "" && cmd.Name() != "logs" {
 			return fmt.Errorf("missing Service ID (set NOTIFYCTL_SERVICE_ID or use --service-id)")
 		}
 

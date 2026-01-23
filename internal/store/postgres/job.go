@@ -122,3 +122,38 @@ func (s *NotificationJobStore) GetRetryableJobs(ctx context.Context, limit int) 
 	}
 	return jobs, nil
 }
+
+func (s *NotificationJobStore) List(ctx context.Context, serviceID string) ([]*domain.NotificationJob, error) {
+	query := `
+		SELECT request_id, service_id, payload, status, retry_count, next_retry_at, created_at, updated_at
+		FROM notification_jobs
+		WHERE ($1 = '' OR service_id = $1)
+		ORDER BY created_at DESC
+		LIMIT 100
+	`
+	rows, err := s.db.Pool.Query(ctx, query, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("query notification jobs: %w", err)
+	}
+	defer rows.Close()
+
+	var jobs []*domain.NotificationJob
+	for rows.Next() {
+		var job domain.NotificationJob
+		err := rows.Scan(
+			&job.RequestID,
+			&job.ServiceID,
+			&job.Payload,
+			&job.Status,
+			&job.RetryCount,
+			&job.NextRetryAt,
+			&job.CreatedAt,
+			&job.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan notification job: %w", err)
+		}
+		jobs = append(jobs, &job)
+	}
+	return jobs, nil
+}

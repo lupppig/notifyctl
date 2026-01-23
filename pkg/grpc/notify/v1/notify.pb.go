@@ -752,6 +752,170 @@ func (x *DeliveryStatusEvent) GetAttempt() int32 {
 	return 0
 }
 
+type ListNotificationJobsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ServiceId     string                 `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListNotificationJobsRequest) Reset() {
+	*x = ListNotificationJobsRequest{}
+	mi := &file_api_notify_v1_notify_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListNotificationJobsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListNotificationJobsRequest) ProtoMessage() {}
+
+func (x *ListNotificationJobsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notify_v1_notify_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListNotificationJobsRequest.ProtoReflect.Descriptor instead.
+func (*ListNotificationJobsRequest) Descriptor() ([]byte, []int) {
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListNotificationJobsRequest) GetServiceId() string {
+	if x != nil {
+		return x.ServiceId
+	}
+	return ""
+}
+
+type ListNotificationJobsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Jobs          []*NotificationJob     `protobuf:"bytes,1,rep,name=jobs,proto3" json:"jobs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListNotificationJobsResponse) Reset() {
+	*x = ListNotificationJobsResponse{}
+	mi := &file_api_notify_v1_notify_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListNotificationJobsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListNotificationJobsResponse) ProtoMessage() {}
+
+func (x *ListNotificationJobsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notify_v1_notify_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListNotificationJobsResponse.ProtoReflect.Descriptor instead.
+func (*ListNotificationJobsResponse) Descriptor() ([]byte, []int) {
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ListNotificationJobsResponse) GetJobs() []*NotificationJob {
+	if x != nil {
+		return x.Jobs
+	}
+	return nil
+}
+
+type NotificationJob struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	ServiceId     string                 `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	Event         string                 `protobuf:"bytes,3,opt,name=event,proto3" json:"event,omitempty"`
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NotificationJob) Reset() {
+	*x = NotificationJob{}
+	mi := &file_api_notify_v1_notify_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotificationJob) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotificationJob) ProtoMessage() {}
+
+func (x *NotificationJob) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notify_v1_notify_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NotificationJob.ProtoReflect.Descriptor instead.
+func (*NotificationJob) Descriptor() ([]byte, []int) {
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *NotificationJob) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *NotificationJob) GetServiceId() string {
+	if x != nil {
+		return x.ServiceId
+	}
+	return ""
+}
+
+func (x *NotificationJob) GetEvent() string {
+	if x != nil {
+		return x.Event
+	}
+	return ""
+}
+
+func (x *NotificationJob) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *NotificationJob) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
 var File_api_notify_v1_notify_proto protoreflect.FileDescriptor
 
 const file_api_notify_v1_notify_proto_rawDesc = "" +
@@ -797,7 +961,21 @@ const file_api_notify_v1_notify_proto_rawDesc = "" +
 	"\vdestination\x18\x02 \x01(\tR\vdestination\x121\n" +
 	"\x06status\x18\x03 \x01(\x0e2\x19.notify.v1.DeliveryStatusR\x06status\x12\x18\n" +
 	"\amessage\x18\x04 \x01(\tR\amessage\x12\x18\n" +
-	"\aattempt\x18\x05 \x01(\x05R\aattempt*m\n" +
+	"\aattempt\x18\x05 \x01(\x05R\aattempt\"<\n" +
+	"\x1bListNotificationJobsRequest\x12\x1d\n" +
+	"\n" +
+	"service_id\x18\x01 \x01(\tR\tserviceId\"N\n" +
+	"\x1cListNotificationJobsResponse\x12.\n" +
+	"\x04jobs\x18\x01 \x03(\v2\x1a.notify.v1.NotificationJobR\x04jobs\"\x9c\x01\n" +
+	"\x0fNotificationJob\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1d\n" +
+	"\n" +
+	"service_id\x18\x02 \x01(\tR\tserviceId\x12\x14\n" +
+	"\x05event\x18\x03 \x01(\tR\x05event\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt*m\n" +
 	"\x0fDestinationType\x12 \n" +
 	"\x1cDESTINATION_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18DESTINATION_TYPE_WEBHOOK\x10\x01\x12\x1a\n" +
@@ -808,13 +986,14 @@ const file_api_notify_v1_notify_proto_rawDesc = "" +
 	"\x1aDELIVERY_STATUS_DELIVERING\x10\x02\x12\x1d\n" +
 	"\x19DELIVERY_STATUS_DELIVERED\x10\x03\x12\x1a\n" +
 	"\x16DELIVERY_STATUS_FAILED\x10\x04\x12\x1c\n" +
-	"\x18DELIVERY_STATUS_RETRYING\x10\x052\xcd\x03\n" +
+	"\x18DELIVERY_STATUS_RETRYING\x10\x052\xb6\x04\n" +
 	"\rNotifyService\x12X\n" +
 	"\x0fRegisterService\x12!.notify.v1.RegisterServiceRequest\x1a\".notify.v1.RegisterServiceResponse\x12O\n" +
 	"\fListServices\x12\x1e.notify.v1.ListServicesRequest\x1a\x1f.notify.v1.ListServicesResponse\x12R\n" +
 	"\rDeleteService\x12\x1f.notify.v1.DeleteServiceRequest\x1a .notify.v1.DeleteServiceResponse\x12[\n" +
 	"\x10SendNotification\x12\".notify.v1.SendNotificationRequest\x1a#.notify.v1.SendNotificationResponse\x12`\n" +
-	"\x14StreamDeliveryStatus\x12&.notify.v1.StreamDeliveryStatusRequest\x1a\x1e.notify.v1.DeliveryStatusEvent0\x01B:Z8github.com/lupppig/notifyctl/pkg/grpc/notify/v1;notifyv1b\x06proto3"
+	"\x14StreamDeliveryStatus\x12&.notify.v1.StreamDeliveryStatusRequest\x1a\x1e.notify.v1.DeliveryStatusEvent0\x01\x12g\n" +
+	"\x14ListNotificationJobs\x12&.notify.v1.ListNotificationJobsRequest\x1a'.notify.v1.ListNotificationJobsResponseB:Z8github.com/lupppig/notifyctl/pkg/grpc/notify/v1;notifyv1b\x06proto3"
 
 var (
 	file_api_notify_v1_notify_proto_rawDescOnce sync.Once
@@ -829,43 +1008,49 @@ func file_api_notify_v1_notify_proto_rawDescGZIP() []byte {
 }
 
 var file_api_notify_v1_notify_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_notify_v1_notify_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_api_notify_v1_notify_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_api_notify_v1_notify_proto_goTypes = []any{
-	(DestinationType)(0),                // 0: notify.v1.DestinationType
-	(DeliveryStatus)(0),                 // 1: notify.v1.DeliveryStatus
-	(*RegisterServiceRequest)(nil),      // 2: notify.v1.RegisterServiceRequest
-	(*RegisterServiceResponse)(nil),     // 3: notify.v1.RegisterServiceResponse
-	(*ListServicesRequest)(nil),         // 4: notify.v1.ListServicesRequest
-	(*ListServicesResponse)(nil),        // 5: notify.v1.ListServicesResponse
-	(*ServiceInfo)(nil),                 // 6: notify.v1.ServiceInfo
-	(*DeleteServiceRequest)(nil),        // 7: notify.v1.DeleteServiceRequest
-	(*DeleteServiceResponse)(nil),       // 8: notify.v1.DeleteServiceResponse
-	(*SendNotificationRequest)(nil),     // 9: notify.v1.SendNotificationRequest
-	(*Destination)(nil),                 // 10: notify.v1.Destination
-	(*SendNotificationResponse)(nil),    // 11: notify.v1.SendNotificationResponse
-	(*StreamDeliveryStatusRequest)(nil), // 12: notify.v1.StreamDeliveryStatusRequest
-	(*DeliveryStatusEvent)(nil),         // 13: notify.v1.DeliveryStatusEvent
+	(DestinationType)(0),                 // 0: notify.v1.DestinationType
+	(DeliveryStatus)(0),                  // 1: notify.v1.DeliveryStatus
+	(*RegisterServiceRequest)(nil),       // 2: notify.v1.RegisterServiceRequest
+	(*RegisterServiceResponse)(nil),      // 3: notify.v1.RegisterServiceResponse
+	(*ListServicesRequest)(nil),          // 4: notify.v1.ListServicesRequest
+	(*ListServicesResponse)(nil),         // 5: notify.v1.ListServicesResponse
+	(*ServiceInfo)(nil),                  // 6: notify.v1.ServiceInfo
+	(*DeleteServiceRequest)(nil),         // 7: notify.v1.DeleteServiceRequest
+	(*DeleteServiceResponse)(nil),        // 8: notify.v1.DeleteServiceResponse
+	(*SendNotificationRequest)(nil),      // 9: notify.v1.SendNotificationRequest
+	(*Destination)(nil),                  // 10: notify.v1.Destination
+	(*SendNotificationResponse)(nil),     // 11: notify.v1.SendNotificationResponse
+	(*StreamDeliveryStatusRequest)(nil),  // 12: notify.v1.StreamDeliveryStatusRequest
+	(*DeliveryStatusEvent)(nil),          // 13: notify.v1.DeliveryStatusEvent
+	(*ListNotificationJobsRequest)(nil),  // 14: notify.v1.ListNotificationJobsRequest
+	(*ListNotificationJobsResponse)(nil), // 15: notify.v1.ListNotificationJobsResponse
+	(*NotificationJob)(nil),              // 16: notify.v1.NotificationJob
 }
 var file_api_notify_v1_notify_proto_depIdxs = []int32{
 	6,  // 0: notify.v1.ListServicesResponse.services:type_name -> notify.v1.ServiceInfo
 	10, // 1: notify.v1.SendNotificationRequest.destinations:type_name -> notify.v1.Destination
 	0,  // 2: notify.v1.Destination.type:type_name -> notify.v1.DestinationType
 	1,  // 3: notify.v1.DeliveryStatusEvent.status:type_name -> notify.v1.DeliveryStatus
-	2,  // 4: notify.v1.NotifyService.RegisterService:input_type -> notify.v1.RegisterServiceRequest
-	4,  // 5: notify.v1.NotifyService.ListServices:input_type -> notify.v1.ListServicesRequest
-	7,  // 6: notify.v1.NotifyService.DeleteService:input_type -> notify.v1.DeleteServiceRequest
-	9,  // 7: notify.v1.NotifyService.SendNotification:input_type -> notify.v1.SendNotificationRequest
-	12, // 8: notify.v1.NotifyService.StreamDeliveryStatus:input_type -> notify.v1.StreamDeliveryStatusRequest
-	3,  // 9: notify.v1.NotifyService.RegisterService:output_type -> notify.v1.RegisterServiceResponse
-	5,  // 10: notify.v1.NotifyService.ListServices:output_type -> notify.v1.ListServicesResponse
-	8,  // 11: notify.v1.NotifyService.DeleteService:output_type -> notify.v1.DeleteServiceResponse
-	11, // 12: notify.v1.NotifyService.SendNotification:output_type -> notify.v1.SendNotificationResponse
-	13, // 13: notify.v1.NotifyService.StreamDeliveryStatus:output_type -> notify.v1.DeliveryStatusEvent
-	9,  // [9:14] is the sub-list for method output_type
-	4,  // [4:9] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	16, // 4: notify.v1.ListNotificationJobsResponse.jobs:type_name -> notify.v1.NotificationJob
+	2,  // 5: notify.v1.NotifyService.RegisterService:input_type -> notify.v1.RegisterServiceRequest
+	4,  // 6: notify.v1.NotifyService.ListServices:input_type -> notify.v1.ListServicesRequest
+	7,  // 7: notify.v1.NotifyService.DeleteService:input_type -> notify.v1.DeleteServiceRequest
+	9,  // 8: notify.v1.NotifyService.SendNotification:input_type -> notify.v1.SendNotificationRequest
+	12, // 9: notify.v1.NotifyService.StreamDeliveryStatus:input_type -> notify.v1.StreamDeliveryStatusRequest
+	14, // 10: notify.v1.NotifyService.ListNotificationJobs:input_type -> notify.v1.ListNotificationJobsRequest
+	3,  // 11: notify.v1.NotifyService.RegisterService:output_type -> notify.v1.RegisterServiceResponse
+	5,  // 12: notify.v1.NotifyService.ListServices:output_type -> notify.v1.ListServicesResponse
+	8,  // 13: notify.v1.NotifyService.DeleteService:output_type -> notify.v1.DeleteServiceResponse
+	11, // 14: notify.v1.NotifyService.SendNotification:output_type -> notify.v1.SendNotificationResponse
+	13, // 15: notify.v1.NotifyService.StreamDeliveryStatus:output_type -> notify.v1.DeliveryStatusEvent
+	15, // 16: notify.v1.NotifyService.ListNotificationJobs:output_type -> notify.v1.ListNotificationJobsResponse
+	11, // [11:17] is the sub-list for method output_type
+	5,  // [5:11] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_api_notify_v1_notify_proto_init() }
@@ -879,7 +1064,7 @@ func file_api_notify_v1_notify_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_notify_v1_notify_proto_rawDesc), len(file_api_notify_v1_notify_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   12,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

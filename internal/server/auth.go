@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -28,8 +29,10 @@ func (a *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
-		// Skip auth for registration and health checks
+		log.Printf("[AUTH] Intercepting: %s", info.FullMethod)
+		// Skip auth for registration, listing services, and health checks
 		if info.FullMethod == "/notify.v1.NotifyService/RegisterService" ||
+			info.FullMethod == "/notify.v1.NotifyService/ListServices" ||
 			info.FullMethod == "/grpc.health.v1.Health/Check" {
 			return handler(ctx, req)
 		}

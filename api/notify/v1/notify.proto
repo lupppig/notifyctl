@@ -10,6 +10,7 @@ service NotifyService {
   rpc DeleteService(DeleteServiceRequest) returns (DeleteServiceResponse);
   rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
   rpc StreamDeliveryStatus(StreamDeliveryStatusRequest) returns (stream DeliveryStatusEvent);
+  rpc ListNotificationJobs(ListNotificationJobsRequest) returns (ListNotificationJobsResponse);
 }
 
 // RegisterService messages
@@ -94,4 +95,22 @@ enum DeliveryStatus {
   DELIVERY_STATUS_DELIVERED = 3;
   DELIVERY_STATUS_FAILED = 4;
   DELIVERY_STATUS_RETRYING = 5;
+}
+
+// ListNotificationJobs messages
+
+message ListNotificationJobsRequest {
+  string service_id = 1;
+}
+
+message ListNotificationJobsResponse {
+  repeated NotificationJob jobs = 1;
+}
+
+message NotificationJob {
+  string request_id = 1;
+  string service_id = 2;
+  string event = 3;
+  string status = 4;
+  string created_at = 5;
 }

@@ -24,6 +24,7 @@ const (
 	NotifyService_DeleteService_FullMethodName        = "/notify.v1.NotifyService/DeleteService"
 	NotifyService_SendNotification_FullMethodName     = "/notify.v1.NotifyService/SendNotification"
 	NotifyService_StreamDeliveryStatus_FullMethodName = "/notify.v1.NotifyService/StreamDeliveryStatus"
+	NotifyService_ListNotificationJobs_FullMethodName = "/notify.v1.NotifyService/ListNotificationJobs"
 )
 
 // NotifyServiceClient is the client API for NotifyService service.
@@ -35,6 +36,7 @@ type NotifyServiceClient interface {
 	DeleteService(ctx context.Context, in *DeleteServiceRequest, opts ...grpc.CallOption) (*DeleteServiceResponse, error)
 	SendNotification(ctx context.Context, in *SendNotificationRequest, opts ...grpc.CallOption) (*SendNotificationResponse, error)
 	StreamDeliveryStatus(ctx context.Context, in *StreamDeliveryStatusRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DeliveryStatusEvent], error)
+	ListNotificationJobs(ctx context.Context, in *ListNotificationJobsRequest, opts ...grpc.CallOption) (*ListNotificationJobsResponse, error)
 }
 
 type notifyServiceClient struct {
@@ -104,6 +106,16 @@ func (c *notifyServiceClient) StreamDeliveryStatus(ctx context.Context, in *Stre
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type NotifyService_StreamDeliveryStatusClient = grpc.ServerStreamingClient[DeliveryStatusEvent]
 
+func (c *notifyServiceClient) ListNotificationJobs(ctx context.Context, in *ListNotificationJobsRequest, opts ...grpc.CallOption) (*ListNotificationJobsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListNotificationJobsResponse)
+	err := c.cc.Invoke(ctx, NotifyService_ListNotificationJobs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NotifyServiceServer is the server API for NotifyService service.
 // All implementations must embed UnimplementedNotifyServiceServer
 // for forward compatibility.
@@ -113,6 +125,7 @@ type NotifyServiceServer interface {
 	DeleteService(context.Context, *DeleteServiceRequest) (*DeleteServiceResponse, error)
 	SendNotification(context.Context, *SendNotificationRequest) (*SendNotificationResponse, error)
 	StreamDeliveryStatus(*StreamDeliveryStatusRequest, grpc.ServerStreamingServer[DeliveryStatusEvent]) error
+	ListNotificationJobs(context.Context, *ListNotificationJobsRequest) (*ListNotificationJobsResponse, error)
 	mustEmbedUnimplementedNotifyServiceServer()
 }
 
@@ -137,6 +150,9 @@ func (UnimplementedNotifyServiceServer) SendNotification(context.Context, *SendN
 }
 func (UnimplementedNotifyServiceServer) StreamDeliveryStatus(*StreamDeliveryStatusRequest, grpc.ServerStreamingServer[DeliveryStatusEvent]) error {
 	return status.Error(codes.Unimplemented, "method StreamDeliveryStatus not implemented")
+}
+func (UnimplementedNotifyServiceServer) ListNotificationJobs(context.Context, *ListNotificationJobsRequest) (*ListNotificationJobsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListNotificationJobs not implemented")
 }
 func (UnimplementedNotifyServiceServer) mustEmbedUnimplementedNotifyServiceServer() {}
 func (UnimplementedNotifyServiceServer) testEmbeddedByValue()                       {}
@@ -242,6 +258,24 @@ func _NotifyService_StreamDeliveryStatus_Handler(srv interface{}, stream grpc.Se
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type NotifyService_StreamDeliveryStatusServer = grpc.ServerStreamingServer[DeliveryStatusEvent]
 
+func _NotifyService_ListNotificationJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNotificationJobsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotifyServiceServer).ListNotificationJobs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotifyService_ListNotificationJobs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotifyServiceServer).ListNotificationJobs(ctx, req.(*ListNotificationJobsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NotifyService_ServiceDesc is the grpc.ServiceDesc for NotifyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -264,6 +298,10 @@ var NotifyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendNotification",
 			Handler:    _NotifyService_SendNotification_Handler,
+		},
+		{
+			MethodName: "ListNotificationJobs",
+			Handler:    _NotifyService_ListNotificationJobs_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
