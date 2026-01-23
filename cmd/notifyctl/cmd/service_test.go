@@ -19,6 +19,7 @@ type mockNotifyClient struct {
 	registerFunc func(ctx context.Context, in *notifyv1.RegisterServiceRequest) (*notifyv1.RegisterServiceResponse, error)
 	listFunc     func(ctx context.Context, in *notifyv1.ListServicesRequest) (*notifyv1.ListServicesResponse, error)
 	deleteFunc   func(ctx context.Context, in *notifyv1.DeleteServiceRequest) (*notifyv1.DeleteServiceResponse, error)
+	sendFunc     func(ctx context.Context, in *notifyv1.SendNotificationRequest) (*notifyv1.SendNotificationResponse, error)
 }
 
 func (m *mockNotifyClient) RegisterService(ctx context.Context, in *notifyv1.RegisterServiceRequest, opts ...grpc.CallOption) (*notifyv1.RegisterServiceResponse, error) {
@@ -31,6 +32,10 @@ func (m *mockNotifyClient) ListServices(ctx context.Context, in *notifyv1.ListSe
 
 func (m *mockNotifyClient) DeleteService(ctx context.Context, in *notifyv1.DeleteServiceRequest, opts ...grpc.CallOption) (*notifyv1.DeleteServiceResponse, error) {
 	return m.deleteFunc(ctx, in)
+}
+
+func (m *mockNotifyClient) SendNotification(ctx context.Context, in *notifyv1.SendNotificationRequest, opts ...grpc.CallOption) (*notifyv1.SendNotificationResponse, error) {
+	return m.sendFunc(ctx, in)
 }
 
 func TestServiceCreate(t *testing.T) {
