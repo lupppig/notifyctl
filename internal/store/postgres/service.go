@@ -67,3 +67,12 @@ func (s *ServiceStore) List(ctx context.Context) ([]*domain.Service, error) {
 
 	return services, nil
 }
+
+func (s *ServiceStore) Delete(ctx context.Context, id string) error {
+	query := `DELETE FROM services WHERE id = $1`
+	_, err := s.db.Pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete service %s: %w", id, err)
+	}
+	return nil
+}

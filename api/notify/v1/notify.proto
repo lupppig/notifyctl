@@ -7,6 +7,7 @@ option go_package = "github.com/lupppig/notifyctl/pkg/grpc/notify/v1;notifyv1";
 service NotifyService {
   rpc RegisterService(RegisterServiceRequest) returns (RegisterServiceResponse);
   rpc ListServices(ListServicesRequest) returns (ListServicesResponse);
+  rpc DeleteService(DeleteServiceRequest) returns (DeleteServiceResponse);
   rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
   rpc StreamDeliveryStatus(StreamDeliveryStatusRequest) returns (stream DeliveryStatusEvent);
 }
@@ -37,6 +38,14 @@ message ServiceInfo {
   string name = 2;
   string webhook_url = 3;
 }
+
+// DeleteService messages
+
+message DeleteServiceRequest {
+  string id = 1;
+}
+
+message DeleteServiceResponse {}
 
 
 // SendNotification messages

@@ -18,6 +18,7 @@ type mockNotifyClient struct {
 	notifyv1.NotifyServiceClient
 	registerFunc func(ctx context.Context, in *notifyv1.RegisterServiceRequest) (*notifyv1.RegisterServiceResponse, error)
 	listFunc     func(ctx context.Context, in *notifyv1.ListServicesRequest) (*notifyv1.ListServicesResponse, error)
+	deleteFunc   func(ctx context.Context, in *notifyv1.DeleteServiceRequest) (*notifyv1.DeleteServiceResponse, error)
 }
 
 func (m *mockNotifyClient) RegisterService(ctx context.Context, in *notifyv1.RegisterServiceRequest, opts ...grpc.CallOption) (*notifyv1.RegisterServiceResponse, error) {
@@ -26,6 +27,10 @@ func (m *mockNotifyClient) RegisterService(ctx context.Context, in *notifyv1.Reg
 
 func (m *mockNotifyClient) ListServices(ctx context.Context, in *notifyv1.ListServicesRequest, opts ...grpc.CallOption) (*notifyv1.ListServicesResponse, error) {
 	return m.listFunc(ctx, in)
+}
+
+func (m *mockNotifyClient) DeleteService(ctx context.Context, in *notifyv1.DeleteServiceRequest, opts ...grpc.CallOption) (*notifyv1.DeleteServiceResponse, error) {
+	return m.deleteFunc(ctx, in)
 }
 
 func TestServiceCreate(t *testing.T) {
@@ -154,5 +159,43 @@ func TestServiceListJSON(t *testing.T) {
 	}
 	if len(services) != 1 || services[0].Name != "S1" {
 		t.Errorf("unexpected JSON content: %+v", services[0])
+	}
+}
+
+func TestServiceDelete(t *testing.T) {
+	// Setup mock
+	originalFactory := clientFactory
+	defer func() { clientFactory = originalFactory }()
+
+	deletedID := ""
+	mock := &mockNotifyClient{
+		deleteFunc: func(ctx context.Context, in *notifyv1.DeleteServiceRequest) (*notifyv1.DeleteServiceResponse, error) {
+			deletedID = in.Id
+			return &notifyv1.DeleteServiceResponse{}, nil
+		},
+	}
+	clientFactory = func(conn grpc.ClientConnInterface) notifyv1.NotifyServiceClient { return mock }
+
+	// Use quiet mode to skip confirmation prompt
+	quiet = true
+	defer func() { quiet = false }()
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Run command
+	svcIDToDelete = "svc-999"
+	err := deleteServiceCmd.RunE(deleteServiceCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if deletedID != "svc-999" {
+		t.Errorf("expected deleted ID to be svc-999, got: %s", deletedID)
 	}
 }

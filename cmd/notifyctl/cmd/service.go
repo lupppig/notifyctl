@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -16,6 +17,7 @@ var (
 	svcName       string
 	svcWebhookURL string
 	svcSecret     string
+	svcIDToDelete string
 )
 
 var serviceCmd = &cobra.Command{
@@ -60,6 +62,43 @@ var createServiceCmd = &cobra.Command{
 		fmt.Fprintln(out, "Service created successfully!")
 		fmt.Fprintf(out, "ID:      %s\n", resp.ServiceId)
 		fmt.Fprintf(out, "API Key: %s\n", resp.ApiKey)
+		return nil
+	},
+}
+
+var deleteServiceCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "Delete a service",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if !IsQuiet() {
+			fmt.Printf("Are you sure you want to delete service %s? [y/N]: ", svcIDToDelete)
+			var response string
+			fmt.Scanln(&response)
+			if strings.ToLower(response) != "y" {
+				fmt.Println("Deletion cancelled.")
+				return nil
+			}
+		}
+
+		client := GetNotifyServiceClient()
+
+		ctx, cancel := context.WithTimeout(context.Background(), GetTimeout())
+		defer cancel()
+
+		_, err := client.DeleteService(ctx, &notifyv1.DeleteServiceRequest{
+			Id: svcIDToDelete,
+		})
+		if err != nil {
+			return fmt.Errorf("delete service: %w", err)
+		}
+
+		out := bufio.NewWriter(os.Stdout)
+		defer out.Flush()
+
+		if !IsQuiet() {
+			fmt.Fprintln(out, "Service deleted successfully.")
+		}
+
 		return nil
 	},
 }
@@ -109,6 +148,7 @@ func init() {
 	rootCmd.AddCommand(serviceCmd)
 	serviceCmd.AddCommand(createServiceCmd)
 	serviceCmd.AddCommand(listServicesCmd)
+	serviceCmd.AddCommand(deleteServiceCmd)
 
 	createServiceCmd.Flags().StringVar(&svcName, "name", "", "Service name (required)")
 	createServiceCmd.Flags().StringVar(&svcWebhookURL, "webhook-url", "", "Webhook URL (required)")
@@ -116,4 +156,7 @@ func init() {
 
 	_ = createServiceCmd.MarkFlagRequired("name")
 	_ = createServiceCmd.MarkFlagRequired("webhook-url")
+
+	deleteServiceCmd.Flags().StringVar(&svcIDToDelete, "id", "", "Service ID (required)")
+	_ = deleteServiceCmd.MarkFlagRequired("id")
 }

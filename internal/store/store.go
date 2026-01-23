@@ -9,6 +9,7 @@ import (
 type ServiceStore interface {
 	Create(ctx context.Context, svc *domain.Service) error
 	List(ctx context.Context) ([]*domain.Service, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type NotificationStore interface {

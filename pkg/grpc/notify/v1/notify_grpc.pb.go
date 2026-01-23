@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	NotifyService_RegisterService_FullMethodName      = "/notify.v1.NotifyService/RegisterService"
 	NotifyService_ListServices_FullMethodName         = "/notify.v1.NotifyService/ListServices"
+	NotifyService_DeleteService_FullMethodName        = "/notify.v1.NotifyService/DeleteService"
 	NotifyService_SendNotification_FullMethodName     = "/notify.v1.NotifyService/SendNotification"
 	NotifyService_StreamDeliveryStatus_FullMethodName = "/notify.v1.NotifyService/StreamDeliveryStatus"
 )
@@ -31,6 +32,7 @@ const (
 type NotifyServiceClient interface {
 	RegisterService(ctx context.Context, in *RegisterServiceRequest, opts ...grpc.CallOption) (*RegisterServiceResponse, error)
 	ListServices(ctx context.Context, in *ListServicesRequest, opts ...grpc.CallOption) (*ListServicesResponse, error)
+	DeleteService(ctx context.Context, in *DeleteServiceRequest, opts ...grpc.CallOption) (*DeleteServiceResponse, error)
 	SendNotification(ctx context.Context, in *SendNotificationRequest, opts ...grpc.CallOption) (*SendNotificationResponse, error)
 	StreamDeliveryStatus(ctx context.Context, in *StreamDeliveryStatusRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DeliveryStatusEvent], error)
 }
@@ -57,6 +59,16 @@ func (c *notifyServiceClient) ListServices(ctx context.Context, in *ListServices
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListServicesResponse)
 	err := c.cc.Invoke(ctx, NotifyService_ListServices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *notifyServiceClient) DeleteService(ctx context.Context, in *DeleteServiceRequest, opts ...grpc.CallOption) (*DeleteServiceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteServiceResponse)
+	err := c.cc.Invoke(ctx, NotifyService_DeleteService_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +110,7 @@ type NotifyService_StreamDeliveryStatusClient = grpc.ServerStreamingClient[Deliv
 type NotifyServiceServer interface {
 	RegisterService(context.Context, *RegisterServiceRequest) (*RegisterServiceResponse, error)
 	ListServices(context.Context, *ListServicesRequest) (*ListServicesResponse, error)
+	DeleteService(context.Context, *DeleteServiceRequest) (*DeleteServiceResponse, error)
 	SendNotification(context.Context, *SendNotificationRequest) (*SendNotificationResponse, error)
 	StreamDeliveryStatus(*StreamDeliveryStatusRequest, grpc.ServerStreamingServer[DeliveryStatusEvent]) error
 	mustEmbedUnimplementedNotifyServiceServer()
@@ -115,6 +128,9 @@ func (UnimplementedNotifyServiceServer) RegisterService(context.Context, *Regist
 }
 func (UnimplementedNotifyServiceServer) ListServices(context.Context, *ListServicesRequest) (*ListServicesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListServices not implemented")
+}
+func (UnimplementedNotifyServiceServer) DeleteService(context.Context, *DeleteServiceRequest) (*DeleteServiceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteService not implemented")
 }
 func (UnimplementedNotifyServiceServer) SendNotification(context.Context, *SendNotificationRequest) (*SendNotificationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendNotification not implemented")
@@ -179,6 +195,24 @@ func _NotifyService_ListServices_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NotifyService_DeleteService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteServiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotifyServiceServer).DeleteService(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotifyService_DeleteService_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotifyServiceServer).DeleteService(ctx, req.(*DeleteServiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _NotifyService_SendNotification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SendNotificationRequest)
 	if err := dec(in); err != nil {
@@ -222,6 +256,10 @@ var NotifyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListServices",
 			Handler:    _NotifyService_ListServices_Handler,
+		},
+		{
+			MethodName: "DeleteService",
+			Handler:    _NotifyService_DeleteService_Handler,
 		},
 		{
 			MethodName: "SendNotification",

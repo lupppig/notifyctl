@@ -104,6 +104,18 @@ func (s *NotifyServer) StreamDeliveryStatus(
 	return nil
 }
 
+func (s *NotifyServer) DeleteService(ctx context.Context, req *notifyv1.DeleteServiceRequest) (*notifyv1.DeleteServiceResponse, error) {
+	if req.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id required")
+	}
+
+	if err := s.serviceStore.Delete(ctx, req.Id); err != nil {
+		return nil, status.Errorf(codes.Internal, "delete service: %v", err)
+	}
+
+	return &notifyv1.DeleteServiceResponse{}, nil
+}
+
 func mapStatus(status events.DeliveryStatus) notifyv1.DeliveryStatus {
 	switch status {
 	case events.DeliveryStatusPending:
