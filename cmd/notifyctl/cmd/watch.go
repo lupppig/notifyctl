@@ -18,6 +18,7 @@ import (
 var (
 	watchRequestID string
 	watchServiceID string
+	watchUseUI     bool
 )
 
 var watchCmd = &cobra.Command{
@@ -43,6 +44,10 @@ var watchCmd = &cobra.Command{
 		})
 		if err != nil {
 			return fmt.Errorf("open stream: %w", err)
+		}
+
+		if watchUseUI {
+			return runWatchUI(ctx, stream)
 		}
 
 		out := bufio.NewWriter(os.Stdout)
@@ -93,4 +98,5 @@ func init() {
 
 	watchCmd.Flags().StringVar(&watchRequestID, "request-id", "", "Notification Request ID to watch")
 	watchCmd.Flags().StringVar(&watchServiceID, "service-id", "", "Service ID to watch (streams all notifications for this service)")
+	watchCmd.Flags().BoolVar(&watchUseUI, "ui", false, "Use TUI for watching status")
 }
