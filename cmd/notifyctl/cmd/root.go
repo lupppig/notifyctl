@@ -41,7 +41,8 @@ var rootCmd = &cobra.Command{
 	Long: `notifyctl is a CLI-driven notification and webhook delivery platform.
 
 Send events, manage destinations, and monitor delivery status in real-time.`,
-	SilenceUsage: true,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
@@ -56,10 +57,24 @@ Send events, manage destinations, and monitor delivery status in real-time.`,
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
-		if cmd.Name() != "version" && cfg.APIKey == "" {
+		// Commands that don't require pre-configured auth/context
+		if cmd.Name() == "version" || cmd.Name() == "create" {
+			return initGRPCClient()
+		}
+
+		// Service management commands shouldn't be blocked by a missing ServiceID
+		// as they either create them, list them, or take an ID as a flag.
+		if cmd.Parent() != nil && cmd.Parent().Name() == "service" {
+			if cfg.APIKey == "" {
+				return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use config file)")
+			}
+			return initGRPCClient()
+		}
+
+		if cfg.APIKey == "" {
 			return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use config file)")
 		}
-		if cmd.Name() != "version" && cfg.ServiceID == "" {
+		if cfg.ServiceID == "" {
 			return fmt.Errorf("missing Service ID (set NOTIFYCTL_SERVICE_ID or use config file)")
 		}
 

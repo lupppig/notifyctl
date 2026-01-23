@@ -79,15 +79,29 @@ notifyctl/
 # Generate proto code
 make proto
 
-# Build the server
+# Build everything
 make build
+
+# Build CLI only
+make build-cli
 
 # Run the server
 make run
-
-# Clean build artifacts
-make clean
 ```
+
+## Testing
+
+### Automated Tests
+```bash
+go test ./...
+```
+
+### Manual Verification
+1. Start infrastructure: `docker-compose up -d`
+2. Run server: `make run`
+3. Use CLI: `./bin/notifyctl --help`
+
+See the [testing_guide.md](file:///home/klein/.gemini/antigravity/brain/9867e884-cb25-431b-bda3-455aba942b45/testing_guide.md) for a detailed walkthrough of the end-to-end flow.
 
 ---
 
