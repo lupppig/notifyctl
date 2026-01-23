@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/lupppig/notifyctl/internal/domain"
 	"github.com/lupppig/notifyctl/internal/events"
+	"github.com/lupppig/notifyctl/internal/security"
 	"github.com/lupppig/notifyctl/internal/store"
 	notifyv1 "github.com/lupppig/notifyctl/pkg/grpc/notify/v1"
 )
@@ -31,21 +33,29 @@ func (s *NotifyServer) RegisterService(ctx context.Context, req *notifyv1.Regist
 		return nil, status.Error(codes.InvalidArgument, "name required")
 	}
 
+	rawKey, err := security.GenerateKey()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "generate key: %v", err)
+	}
+
 	svc := &domain.Service{
 		ID:         uuid.New().String(),
 		Name:       req.Name,
 		WebhookURL: req.WebhookUrl,
 		Secret:     req.Secret,
-		APIKey:     uuid.New().String(), // In a real app, this would be a secure token
+		APIKey:     security.HashKey(rawKey),
 	}
 
 	if err := s.serviceStore.Create(ctx, svc); err != nil {
+		if errors.Is(err, store.ErrAlreadyExists) {
+			return nil, status.Errorf(codes.AlreadyExists, "service with name %q already exists", req.Name)
+		}
 		return nil, status.Errorf(codes.Internal, "create service: %v", err)
 	}
 
 	return &notifyv1.RegisterServiceResponse{
 		ServiceId: svc.ID,
-		ApiKey:    svc.APIKey,
+		ApiKey:    rawKey,
 	}, nil
 }
 

@@ -2,9 +2,12 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/lupppig/notifyctl/internal/domain"
+	"github.com/lupppig/notifyctl/internal/store"
 )
 
 type ServiceStore struct {
@@ -30,6 +33,10 @@ func (s *ServiceStore) Create(ctx context.Context, svc *domain.Service) error {
 		svc.CreatedAt,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return fmt.Errorf("%w: service name already exists", store.ErrAlreadyExists)
+		}
 		return fmt.Errorf("failed to create service: %w", err)
 	}
 
@@ -66,6 +73,27 @@ func (s *ServiceStore) List(ctx context.Context) ([]*domain.Service, error) {
 	}
 
 	return services, nil
+}
+
+func (s *ServiceStore) GetByAPIKeyHash(ctx context.Context, hash string) (*domain.Service, error) {
+	query := `
+		SELECT id, name, webhook_url, secret, api_key, created_at
+		FROM services
+		WHERE api_key = $1
+	`
+	var svc domain.Service
+	err := s.db.Pool.QueryRow(ctx, query, hash).Scan(
+		&svc.ID,
+		&svc.Name,
+		&svc.WebhookURL,
+		&svc.Secret,
+		&svc.APIKey,
+		&svc.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get service by key: %w", err)
+	}
+	return &svc, nil
 }
 
 func (s *ServiceStore) Delete(ctx context.Context, id string) error {

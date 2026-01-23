@@ -59,9 +59,11 @@ var createServiceCmd = &cobra.Command{
 		m := ServiceStatusModel{
 			Title:   "Create Service",
 			Message: "Service created successfully!",
-			ID:      resp.ServiceId,
-			Key:     resp.ApiKey,
 			Err:     err,
+		}
+		if err == nil {
+			m.ID = resp.ServiceId
+			m.Key = resp.ApiKey
 		}
 		return NewUI(m).Run()
 	},
@@ -136,8 +138,10 @@ var listServicesCmd = &cobra.Command{
 		}
 
 		m := ListServicesModel{
-			services: resp.Services,
-			err:      err,
+			err: err,
+		}
+		if err == nil {
+			m.services = resp.Services
 		}
 		return NewUI(m).Run()
 	},

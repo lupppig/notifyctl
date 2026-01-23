@@ -2,13 +2,19 @@ package store
 
 import (
 	"context"
+	"errors"
 
 	"github.com/lupppig/notifyctl/internal/domain"
+)
+
+var (
+	ErrAlreadyExists = errors.New("already exists")
 )
 
 type ServiceStore interface {
 	Create(ctx context.Context, svc *domain.Service) error
 	List(ctx context.Context) ([]*domain.Service, error)
+	GetByAPIKeyHash(ctx context.Context, hash string) (*domain.Service, error)
 	Delete(ctx context.Context, id string) error
 }
 
