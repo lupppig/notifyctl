@@ -31,7 +31,7 @@ var createServiceCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := GetNotifyServiceClient()
 
-		ctx, cancel := context.WithTimeout(context.Background(), GetTimeout())
+		ctx, cancel := NewCommandContext(context.Background())
 		defer cancel()
 
 		req := &notifyv1.RegisterServiceRequest{
@@ -82,7 +82,7 @@ var deleteServiceCmd = &cobra.Command{
 
 		client := GetNotifyServiceClient()
 
-		ctx, cancel := context.WithTimeout(context.Background(), GetTimeout())
+		ctx, cancel := NewCommandContext(context.Background())
 		defer cancel()
 
 		_, err := client.DeleteService(ctx, &notifyv1.DeleteServiceRequest{
@@ -109,7 +109,7 @@ var listServicesCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := GetNotifyServiceClient()
 
-		ctx, cancel := context.WithTimeout(context.Background(), GetTimeout())
+		ctx, cancel := NewCommandContext(context.Background())
 		defer cancel()
 
 		resp, err := client.ListServices(ctx, &notifyv1.ListServicesRequest{})

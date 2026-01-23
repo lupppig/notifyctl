@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/lupppig/notifyctl/internal/config"
 	internalgrpc "github.com/lupppig/notifyctl/internal/grpc"
@@ -69,7 +71,11 @@ Send events, manage destinations, and monitor delivery status in real-time.`,
 }
 
 func Execute() error {
-	return rootCmd.Execute()
+	err := rootCmd.Execute()
+	if err != nil {
+		exitOnError(err)
+	}
+	return err
 }
 
 func init() {
@@ -121,6 +127,24 @@ func GetTimeout() time.Duration {
 
 func GetNotifyServiceClient() notifyv1.NotifyServiceClient {
 	return clientFactory(grpcConn)
+}
+
+func NewCommandContext(parent context.Context) (context.Context, context.CancelFunc) {
+	var ctx context.Context
+	var cancel context.CancelFunc
+
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(parent, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(parent)
+	}
+
+	if authToken != "" {
+		md := metadata.Pairs("x-auth-token", authToken)
+		ctx = metadata.NewOutgoingContext(ctx, md)
+	}
+
+	return ctx, cancel
 }
 
 func exitOnError(err error) {

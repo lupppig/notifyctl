@@ -53,7 +53,7 @@ var sendCmd = &cobra.Command{
 
 		client := GetNotifyServiceClient()
 
-		ctx, cancel := context.WithTimeout(context.Background(), GetTimeout())
+		ctx, cancel := NewCommandContext(context.Background())
 		defer cancel()
 
 		req := &notifyv1.SendNotificationRequest{
