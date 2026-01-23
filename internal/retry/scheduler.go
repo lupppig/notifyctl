@@ -89,6 +89,10 @@ func (s *Scheduler) processRetries(ctx context.Context) {
 		if !s.ShouldRetry(job.RetryCount) {
 			log.Printf("[%s] ACTION: Terminal Failure | Job %s exceeded max retries (%d)",
 				time.Now().Format(time.RFC3339), job.RequestID, s.config.MaxAttempts)
+			// Record stat
+			if err := s.jobStore.IncrementStats(ctx, job.ServiceID, "FAILED", time.Now()); err != nil {
+				log.Printf("[ERROR] Failed to increment stats: %v", err)
+			}
 			continue
 		}
 

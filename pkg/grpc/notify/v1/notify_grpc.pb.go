@@ -25,6 +25,7 @@ const (
 	NotifyService_SendNotification_FullMethodName     = "/notify.v1.NotifyService/SendNotification"
 	NotifyService_StreamDeliveryStatus_FullMethodName = "/notify.v1.NotifyService/StreamDeliveryStatus"
 	NotifyService_ListNotificationJobs_FullMethodName = "/notify.v1.NotifyService/ListNotificationJobs"
+	NotifyService_GetStats_FullMethodName             = "/notify.v1.NotifyService/GetStats"
 )
 
 // NotifyServiceClient is the client API for NotifyService service.
@@ -37,6 +38,7 @@ type NotifyServiceClient interface {
 	SendNotification(ctx context.Context, in *SendNotificationRequest, opts ...grpc.CallOption) (*SendNotificationResponse, error)
 	StreamDeliveryStatus(ctx context.Context, in *StreamDeliveryStatusRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DeliveryStatusEvent], error)
 	ListNotificationJobs(ctx context.Context, in *ListNotificationJobsRequest, opts ...grpc.CallOption) (*ListNotificationJobsResponse, error)
+	GetStats(ctx context.Context, in *GetStatsRequest, opts ...grpc.CallOption) (*GetStatsResponse, error)
 }
 
 type notifyServiceClient struct {
@@ -116,6 +118,16 @@ func (c *notifyServiceClient) ListNotificationJobs(ctx context.Context, in *List
 	return out, nil
 }
 
+func (c *notifyServiceClient) GetStats(ctx context.Context, in *GetStatsRequest, opts ...grpc.CallOption) (*GetStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStatsResponse)
+	err := c.cc.Invoke(ctx, NotifyService_GetStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NotifyServiceServer is the server API for NotifyService service.
 // All implementations must embed UnimplementedNotifyServiceServer
 // for forward compatibility.
@@ -126,6 +138,7 @@ type NotifyServiceServer interface {
 	SendNotification(context.Context, *SendNotificationRequest) (*SendNotificationResponse, error)
 	StreamDeliveryStatus(*StreamDeliveryStatusRequest, grpc.ServerStreamingServer[DeliveryStatusEvent]) error
 	ListNotificationJobs(context.Context, *ListNotificationJobsRequest) (*ListNotificationJobsResponse, error)
+	GetStats(context.Context, *GetStatsRequest) (*GetStatsResponse, error)
 	mustEmbedUnimplementedNotifyServiceServer()
 }
 
@@ -153,6 +166,9 @@ func (UnimplementedNotifyServiceServer) StreamDeliveryStatus(*StreamDeliveryStat
 }
 func (UnimplementedNotifyServiceServer) ListNotificationJobs(context.Context, *ListNotificationJobsRequest) (*ListNotificationJobsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListNotificationJobs not implemented")
+}
+func (UnimplementedNotifyServiceServer) GetStats(context.Context, *GetStatsRequest) (*GetStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetStats not implemented")
 }
 func (UnimplementedNotifyServiceServer) mustEmbedUnimplementedNotifyServiceServer() {}
 func (UnimplementedNotifyServiceServer) testEmbeddedByValue()                       {}
@@ -276,6 +292,24 @@ func _NotifyService_ListNotificationJobs_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NotifyService_GetStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotifyServiceServer).GetStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotifyService_GetStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotifyServiceServer).GetStats(ctx, req.(*GetStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NotifyService_ServiceDesc is the grpc.ServiceDesc for NotifyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -302,6 +336,10 @@ var NotifyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListNotificationJobs",
 			Handler:    _NotifyService_ListNotificationJobs_Handler,
+		},
+		{
+			MethodName: "GetStats",
+			Handler:    _NotifyService_GetStats_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

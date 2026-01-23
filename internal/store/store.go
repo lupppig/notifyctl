@@ -31,6 +31,8 @@ type NotificationJobStore interface {
 	FailJob(ctx context.Context, requestID string, nextRetryAt time.Time) error
 	GetRetryableJobs(ctx context.Context, limit int) ([]*domain.NotificationJob, error)
 	List(ctx context.Context, serviceID string) ([]*domain.NotificationJob, error)
+	IncrementStats(ctx context.Context, serviceID, status string, t time.Time) error
+	GetStats(ctx context.Context, serviceID string) (map[string]int64, error)
 }
 
 type DeliveryAttemptStore interface {

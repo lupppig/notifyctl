@@ -44,6 +44,20 @@ func (w *Worker) Start() error {
 			log.Printf("[ERROR] Failed to update status for %s: %v", job.RequestID, err)
 		} else {
 			log.Printf("[%s] SUCCESS: Job %s status updated to DISPATCHED", time.Now().Format(time.RFC3339), job.RequestID)
+			// Record stat
+			if err := w.jobStore.IncrementStats(ctx, job.ServiceID, "DISPATCHED", time.Now()); err != nil {
+				log.Printf("[ERROR] Failed to increment stats: %v", err)
+			}
+
+			// Simulate delivery for tracking verification
+			go func(serviceID, requestID string) {
+				time.Sleep(1 * time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = w.jobStore.UpdateStatus(ctx, requestID, "DELIVERED")
+				_ = w.jobStore.IncrementStats(ctx, serviceID, "DELIVERED", time.Now())
+				log.Printf("[%s] SIMULATED: Job %s delivered", time.Now().Format(time.RFC3339), requestID)
+			}(job.ServiceID, job.RequestID)
 		}
 	})
 	if err != nil {

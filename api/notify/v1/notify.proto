@@ -11,6 +11,7 @@ service NotifyService {
   rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
   rpc StreamDeliveryStatus(StreamDeliveryStatusRequest) returns (stream DeliveryStatusEvent);
   rpc ListNotificationJobs(ListNotificationJobsRequest) returns (ListNotificationJobsResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
 }
 
 // RegisterService messages
@@ -113,4 +114,19 @@ message NotificationJob {
   string event = 3;
   string status = 4;
   string created_at = 5;
+}
+
+// GetStats messages
+
+message GetStatsRequest {
+  string service_id = 1;
+}
+
+message GetStatsResponse {
+  repeated StatEntry stats = 1;
+}
+
+message StatEntry {
+  string status = 1;
+  int64 count = 2;
 }

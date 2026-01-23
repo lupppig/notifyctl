@@ -157,3 +157,44 @@ func (s *NotificationJobStore) List(ctx context.Context, serviceID string) ([]*d
 	}
 	return jobs, nil
 }
+
+func (s *NotificationJobStore) IncrementStats(ctx context.Context, serviceID, status string, t time.Time) error {
+	hourBucket := t.Truncate(time.Hour)
+
+	query := `
+		INSERT INTO notification_stats (service_id, status, hour_bucket, count)
+		VALUES ($1, $2, $3, 1)
+		ON CONFLICT (service_id, status, hour_bucket)
+		DO UPDATE SET count = notification_stats.count + 1
+	`
+	_, err := s.db.Pool.Exec(ctx, query, serviceID, status, hourBucket)
+	if err != nil {
+		return fmt.Errorf("increment status stats: %w", err)
+	}
+	return nil
+}
+
+func (s *NotificationJobStore) GetStats(ctx context.Context, serviceID string) (map[string]int64, error) {
+	query := `
+		SELECT status, SUM(count) as total
+		FROM notification_stats
+		WHERE service_id = $1
+		GROUP BY status
+	`
+	rows, err := s.db.Pool.Query(ctx, query, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("query notification stats: %w", err)
+	}
+	defer rows.Close()
+
+	stats := make(map[string]int64)
+	for rows.Next() {
+		var status string
+		var count int64
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, fmt.Errorf("scan stat: %w", err)
+		}
+		stats[status] = count
+	}
+	return stats, nil
+}

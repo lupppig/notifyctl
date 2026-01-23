@@ -157,6 +157,11 @@ func (s *NotifyServer) SendNotification(ctx context.Context, req *notifyv1.SendN
 		return nil, status.Errorf(codes.Internal, "persist job: %v", err)
 	}
 
+	// Record stat
+	if err := s.jobStore.IncrementStats(ctx, req.ServiceId, "ACCEPTED", time.Now()); err != nil {
+		log.Printf("[ERROR] Failed to increment stats: %v", err)
+	}
+
 	// Publish to NATS
 	data, err := json.Marshal(job)
 	if err != nil {
@@ -217,6 +222,27 @@ func (s *NotifyServer) ListNotificationJobs(ctx context.Context, req *notifyv1.L
 	log.Printf("[%s] SUCCESS: Listed %d jobs", time.Now().Format(time.RFC3339), len(protoJobs))
 	return &notifyv1.ListNotificationJobsResponse{
 		Jobs: protoJobs,
+	}, nil
+}
+
+func (s *NotifyServer) GetStats(ctx context.Context, req *notifyv1.GetStatsRequest) (*notifyv1.GetStatsResponse, error) {
+	log.Printf("[%s] ACTION: Getting stats | Service: %s", time.Now().Format(time.RFC3339), req.ServiceId)
+	stats, err := s.jobStore.GetStats(ctx, req.ServiceId)
+	if err != nil {
+		log.Printf("[ERROR] Failed to get stats: %v", err)
+		return nil, status.Errorf(codes.Internal, "get stats: %v", err)
+	}
+
+	var entries []*notifyv1.StatEntry
+	for status, count := range stats {
+		entries = append(entries, &notifyv1.StatEntry{
+			Status: status,
+			Count:  count,
+		})
+	}
+
+	return &notifyv1.GetStatsResponse{
+		Stats: entries,
 	}, nil
 }
 

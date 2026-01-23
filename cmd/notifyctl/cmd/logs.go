@@ -14,6 +14,7 @@ import (
 
 var (
 	logsServiceID string
+	showStats     bool
 )
 
 var logsCmd = &cobra.Command{
@@ -25,8 +26,42 @@ var logsCmd = &cobra.Command{
 		ctx, cancel := NewCommandContext(context.Background())
 		defer cancel()
 
+		serviceID := logsServiceID
+		if serviceID == "" {
+			serviceID = cfg.ServiceID
+		}
+
+		if showStats {
+			req := &notifyv1.GetStatsRequest{
+				ServiceId: serviceID,
+			}
+			resp, err := client.GetStats(ctx, req)
+			if err != nil {
+				return err
+			}
+
+			if IsJSONOutput() {
+				data, _ := json.MarshalIndent(resp.Stats, "", "  ")
+				fmt.Println(string(data))
+				return nil
+			}
+
+			if len(resp.Stats) == 0 {
+				fmt.Println("No stats found.")
+				return nil
+			}
+
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "STATUS\tCOUNT")
+			for _, entry := range resp.Stats {
+				fmt.Fprintf(w, "%s\t%d\n", entry.Status, entry.Count)
+			}
+			w.Flush()
+			return nil
+		}
+
 		req := &notifyv1.ListNotificationJobsRequest{
-			ServiceId: logsServiceID,
+			ServiceId: serviceID,
 		}
 
 		resp, err := client.ListNotificationJobs(ctx, req)
@@ -65,4 +100,5 @@ var logsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(logsCmd)
 	logsCmd.Flags().StringVar(&logsServiceID, "service-id", "", "Filter by service ID")
+	logsCmd.Flags().BoolVar(&showStats, "stats", false, "Show aggregated notification statistics")
 }
