@@ -2,6 +2,8 @@ package server
 
 import (
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/lupppig/notifyctl/internal/events"
 	notifyv1 "github.com/lupppig/notifyctl/pkg/grpc/notify/v1"
@@ -22,6 +24,10 @@ func (s *NotifyServer) StreamDeliveryStatus(
 	req *notifyv1.StreamDeliveryStatusRequest,
 	stream notifyv1.NotifyService_StreamDeliveryStatusServer,
 ) error {
+	if req.NotificationId == "" && req.ServiceId == "" {
+		return status.Error(codes.InvalidArgument, "notification_id or service_id required")
+	}
+
 	sub := &events.Subscriber{
 		ID:             uuid.New().String(),
 		NotificationID: req.NotificationId,

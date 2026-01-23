@@ -5,23 +5,17 @@ import (
 )
 
 type UI struct {
-	Model tea.Model
+	model tea.Model
 }
 
 func NewUI(model tea.Model) *UI {
 	return &UI{
-		Model: model,
+		model: model,
 	}
 }
 
-func (u *UI) Run() error {
-	p := tea.NewProgram(u.Model)
-	_, err := p.Run()
-	return err
-}
-
-func (u *UI) RunWithContext(opts ...tea.ProgramOption) error {
-	p := tea.NewProgram(u.Model, opts...)
+func (u *UI) Run(opts ...tea.ProgramOption) error {
+	p := tea.NewProgram(u.model, opts...)
 	_, err := p.Run()
 	return err
 }

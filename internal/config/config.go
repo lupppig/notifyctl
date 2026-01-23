@@ -25,13 +25,20 @@ func DefaultConfig() *Config {
 	}
 }
 
+func (c *Config) Validate() error {
+	if c.ServerAddr == "" {
+		return fmt.Errorf("server_addr is required")
+	}
+	return nil
+}
+
 func Load(path string) (*Config, error) {
 	cfg := DefaultConfig()
 
 	if path == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
+			return nil, fmt.Errorf("get home directory: %w", err)
 		}
 		path = filepath.Join(home, DefaultConfigFileName)
 	}
@@ -41,11 +48,11 @@ func Load(path string) (*Config, error) {
 		if os.IsNotExist(err) {
 			return cfg, nil
 		}
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, fmt.Errorf("read config file %s: %w", path, err)
 	}
 
 	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+		return nil, fmt.Errorf("parse config file %s: %w", path, err)
 	}
 
 	if addr := os.Getenv("NOTIFYCTL_SERVER_ADDR"); addr != "" {
@@ -56,6 +63,10 @@ func Load(path string) (*Config, error) {
 	}
 	if key := os.Getenv("NOTIFYCTL_API_KEY"); key != "" {
 		cfg.APIKey = key
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	return cfg, nil

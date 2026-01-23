@@ -32,7 +32,7 @@ func (s *DeliveryAttemptStore) Create(ctx context.Context, attempt *domain.Deliv
 		attempt.AttemptedAt,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create delivery attempt: %w", err)
+		return fmt.Errorf("insert delivery attempt: %w", err)
 	}
 
 	return nil

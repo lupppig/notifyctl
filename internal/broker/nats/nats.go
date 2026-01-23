@@ -26,13 +26,13 @@ type Publisher struct {
 func New(ctx context.Context, url string) (*Publisher, error) {
 	conn, err := nats.Connect(url)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to NATS: %w", err)
+		return nil, fmt.Errorf("connect to nats: %w", err)
 	}
 
 	js, err := jetstream.New(conn)
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("failed to create JetStream context: %w", err)
+		return nil, fmt.Errorf("create jetstream: %w", err)
 	}
 
 	stream, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
@@ -41,7 +41,7 @@ func New(ctx context.Context, url string) (*Publisher, error) {
 	})
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("failed to create stream: %w", err)
+		return nil, fmt.Errorf("create stream %s: %w", StreamName, err)
 	}
 
 	dlqStream, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
@@ -50,7 +50,7 @@ func New(ctx context.Context, url string) (*Publisher, error) {
 	})
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("failed to create DLQ stream: %w", err)
+		return nil, fmt.Errorf("create dlq stream %s: %w", DLQStreamName, err)
 	}
 
 	return &Publisher{
@@ -59,6 +59,13 @@ func New(ctx context.Context, url string) (*Publisher, error) {
 		stream:    stream,
 		dlqStream: dlqStream,
 	}, nil
+}
+
+func (p *Publisher) Ping() error {
+	if p.conn == nil || !p.conn.IsConnected() {
+		return fmt.Errorf("nats connection is not active")
+	}
+	return nil
 }
 
 func (p *Publisher) Publish(ctx context.Context, subject string, data []byte) error {

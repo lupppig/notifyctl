@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -86,38 +87,27 @@ func (w *WebhookWorker) processMessage(ctx context.Context, msg jetstream.Msg) {
 		return
 	}
 
-	allSucceeded := true
+	failedDests := 0
 	for _, dest := range notification.Destinations {
-		if dest.Type != domain.DestinationTypeWebhook {
-			continue
-		}
-
-		success := w.deliverWebhook(ctx, notification, dest, nm.AttemptCount)
-		if !success {
-			allSucceeded = false
+		if dest.Type == domain.DestinationTypeWebhook {
+			if !w.deliverWebhook(ctx, notification, dest, nm.AttemptCount) {
+				failedDests++
+			}
 		}
 	}
 
-	if allSucceeded {
+	if failedDests == 0 {
 		msg.Ack()
 		return
 	}
 
-	// Handle retry or DLQ for failed deliveries
 	nm.AttemptCount++
 	if w.retryScheduler.ShouldRetry(nm.AttemptCount) {
 		delay := w.retryScheduler.NextDelay(nm.AttemptCount)
-		log.Printf("scheduling retry %d for notification %s in %v", nm.AttemptCount, nm.NotificationID, delay)
-
-		w.emitEvent(notification, "", events.DeliveryStatusRetrying, "Scheduling retry", nm.AttemptCount)
-
+		w.emitEvent(notification, "", events.DeliveryStatusRetrying, "Retrying", nm.AttemptCount)
 		msg.NakWithDelay(delay)
 	} else {
-		log.Printf("max retries reached for notification %s, moving to DLQ", nm.NotificationID)
-		dlqData, _ := json.Marshal(nm)
-		if err := w.publisher.PublishToDLQ(ctx, dlqData); err != nil {
-			log.Printf("failed to publish to DLQ: %v", err)
-		}
+		w.moveToDLQ(ctx, nm)
 		msg.Ack()
 	}
 }
@@ -128,37 +118,44 @@ func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notificati
 		NotificationID: n.ID,
 		Destination:    dest.Target,
 		AttemptedAt:    time.Now(),
+		Status:         domain.DeliveryStatusFailed,
 	}
 
-	// Emit PENDING event
-	w.emitEvent(n, dest.Target, events.DeliveryStatusPending, "Starting delivery", attemptCount)
+	defer func() {
+		if err := w.attempts.Create(ctx, attempt); err != nil {
+			log.Printf("failed to record delivery attempt: %v", err)
+		}
+	}()
 
-	// Emit DELIVERING event
-	w.emitEvent(n, dest.Target, events.DeliveryStatusDelivering, "Sending HTTP request", attemptCount)
+	w.emitEvent(n, dest.Target, events.DeliveryStatusPending, "Queued", attemptCount)
+	w.emitEvent(n, dest.Target, events.DeliveryStatusDelivering, "Sending", attemptCount)
 
 	resp, err := w.httpClient.Post(ctx, dest.Target, n.Payload)
 	if err != nil {
-		attempt.Status = domain.DeliveryStatusFailed
 		attempt.Error = err.Error()
 		w.emitEvent(n, dest.Target, events.DeliveryStatusFailed, err.Error(), attemptCount)
-	} else {
-		attempt.StatusCode = resp.StatusCode
-		attempt.ResponseBody = resp.Body
-
-		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			attempt.Status = domain.DeliveryStatusSuccess
-			w.emitEvent(n, dest.Target, events.DeliveryStatusDelivered, "Delivery successful", attemptCount)
-		} else {
-			attempt.Status = domain.DeliveryStatusFailed
-			w.emitEvent(n, dest.Target, events.DeliveryStatusFailed, resp.Body, attemptCount)
-		}
+		return false
 	}
 
-	if err := w.attempts.Create(ctx, attempt); err != nil {
-		log.Printf("failed to record delivery attempt: %v", err)
+	attempt.StatusCode = resp.StatusCode
+	attempt.ResponseBody = resp.Body
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		attempt.Status = domain.DeliveryStatusSuccess
+		w.emitEvent(n, dest.Target, events.DeliveryStatusDelivered, "OK", attemptCount)
+		return true
 	}
 
-	return attempt.Status == domain.DeliveryStatusSuccess
+	w.emitEvent(n, dest.Target, events.DeliveryStatusFailed, fmt.Sprintf("HTTP %d", resp.StatusCode), attemptCount)
+	return false
+}
+
+func (w *WebhookWorker) moveToDLQ(ctx context.Context, nm notificationMessage) {
+	log.Printf("moving notification %s to DLQ", nm.NotificationID)
+	data, _ := json.Marshal(nm)
+	if err := w.publisher.PublishToDLQ(ctx, data); err != nil {
+		log.Printf("failed to publish to DLQ: %v", err)
+	}
 }
 
 func (w *WebhookWorker) emitEvent(n *domain.Notification, destination string, status events.DeliveryStatus, message string, attempt int) {
