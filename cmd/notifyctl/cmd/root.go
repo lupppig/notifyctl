@@ -11,17 +11,25 @@ import (
 
 	"github.com/lupppig/notifyctl/internal/config"
 	internalgrpc "github.com/lupppig/notifyctl/internal/grpc"
+	notifyv1 "github.com/lupppig/notifyctl/pkg/grpc/notify/v1"
 )
 
 var (
-	timeout   time.Duration
-	jsonOut   bool
+	timeout    time.Duration
+	jsonOut    bool
 	quiet      bool
 	authToken  string
 	configPath string
 	cfg        *config.Config
 	grpcConn   *grpc.ClientConn
+
+	// clientFactory is used for unit testing
+	clientFactory func(grpc.ClientConnInterface) notifyv1.NotifyServiceClient
 )
+
+func init() {
+	clientFactory = notifyv1.NewNotifyServiceClient
+}
 
 const defaultServerAddr = "localhost:50051"
 
@@ -109,6 +117,10 @@ func IsQuiet() bool {
 
 func GetTimeout() time.Duration {
 	return time.Duration(timeout)
+}
+
+func GetNotifyServiceClient() notifyv1.NotifyServiceClient {
+	return clientFactory(grpcConn)
 }
 
 func exitOnError(err error) {

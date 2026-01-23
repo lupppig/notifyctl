@@ -1,23 +1,72 @@
 package server
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/lupppig/notifyctl/internal/domain"
 	"github.com/lupppig/notifyctl/internal/events"
+	"github.com/lupppig/notifyctl/internal/store"
 	notifyv1 "github.com/lupppig/notifyctl/pkg/grpc/notify/v1"
 )
 
 type NotifyServer struct {
 	notifyv1.UnimplementedNotifyServiceServer
-	eventHub *events.Hub
+	eventHub     *events.Hub
+	serviceStore store.ServiceStore
 }
 
-func NewNotifyServer(eventHub *events.Hub) *NotifyServer {
+func NewNotifyServer(eventHub *events.Hub, serviceStore store.ServiceStore) *NotifyServer {
 	return &NotifyServer{
-		eventHub: eventHub,
+		eventHub:     eventHub,
+		serviceStore: serviceStore,
 	}
+}
+
+func (s *NotifyServer) RegisterService(ctx context.Context, req *notifyv1.RegisterServiceRequest) (*notifyv1.RegisterServiceResponse, error) {
+	if req.Name == "" {
+		return nil, status.Error(codes.InvalidArgument, "name required")
+	}
+
+	svc := &domain.Service{
+		ID:         uuid.New().String(),
+		Name:       req.Name,
+		WebhookURL: req.WebhookUrl,
+		Secret:     req.Secret,
+		APIKey:     uuid.New().String(), // In a real app, this would be a secure token
+	}
+
+	if err := s.serviceStore.Create(ctx, svc); err != nil {
+		return nil, status.Errorf(codes.Internal, "create service: %v", err)
+	}
+
+	return &notifyv1.RegisterServiceResponse{
+		ServiceId: svc.ID,
+		ApiKey:    svc.APIKey,
+	}, nil
+}
+
+func (s *NotifyServer) ListServices(ctx context.Context, req *notifyv1.ListServicesRequest) (*notifyv1.ListServicesResponse, error) {
+	services, err := s.serviceStore.List(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list services: %v", err)
+	}
+
+	var infos []*notifyv1.ServiceInfo
+	for _, svc := range services {
+		infos = append(infos, &notifyv1.ServiceInfo{
+			Id:         svc.ID,
+			Name:       svc.Name,
+			WebhookUrl: svc.WebhookURL,
+		})
+	}
+
+	return &notifyv1.ListServicesResponse{
+		Services: infos,
+	}, nil
 }
 
 func (s *NotifyServer) StreamDeliveryStatus(

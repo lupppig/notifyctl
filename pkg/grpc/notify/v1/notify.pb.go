@@ -240,6 +240,146 @@ func (x *RegisterServiceResponse) GetApiKey() string {
 	return ""
 }
 
+type ListServicesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListServicesRequest) Reset() {
+	*x = ListServicesRequest{}
+	mi := &file_api_notify_v1_notify_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListServicesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListServicesRequest) ProtoMessage() {}
+
+func (x *ListServicesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notify_v1_notify_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListServicesRequest.ProtoReflect.Descriptor instead.
+func (*ListServicesRequest) Descriptor() ([]byte, []int) {
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{2}
+}
+
+type ListServicesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Services      []*ServiceInfo         `protobuf:"bytes,1,rep,name=services,proto3" json:"services,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListServicesResponse) Reset() {
+	*x = ListServicesResponse{}
+	mi := &file_api_notify_v1_notify_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListServicesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListServicesResponse) ProtoMessage() {}
+
+func (x *ListServicesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notify_v1_notify_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListServicesResponse.ProtoReflect.Descriptor instead.
+func (*ListServicesResponse) Descriptor() ([]byte, []int) {
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ListServicesResponse) GetServices() []*ServiceInfo {
+	if x != nil {
+		return x.Services
+	}
+	return nil
+}
+
+type ServiceInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	WebhookUrl    string                 `protobuf:"bytes,3,opt,name=webhook_url,json=webhookUrl,proto3" json:"webhook_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceInfo) Reset() {
+	*x = ServiceInfo{}
+	mi := &file_api_notify_v1_notify_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceInfo) ProtoMessage() {}
+
+func (x *ServiceInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notify_v1_notify_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceInfo.ProtoReflect.Descriptor instead.
+func (*ServiceInfo) Descriptor() ([]byte, []int) {
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ServiceInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ServiceInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ServiceInfo) GetWebhookUrl() string {
+	if x != nil {
+		return x.WebhookUrl
+	}
+	return ""
+}
+
 type SendNotificationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ServiceId     string                 `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -252,7 +392,7 @@ type SendNotificationRequest struct {
 
 func (x *SendNotificationRequest) Reset() {
 	*x = SendNotificationRequest{}
-	mi := &file_api_notify_v1_notify_proto_msgTypes[2]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -264,7 +404,7 @@ func (x *SendNotificationRequest) String() string {
 func (*SendNotificationRequest) ProtoMessage() {}
 
 func (x *SendNotificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_notify_v1_notify_proto_msgTypes[2]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -277,7 +417,7 @@ func (x *SendNotificationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendNotificationRequest.ProtoReflect.Descriptor instead.
 func (*SendNotificationRequest) Descriptor() ([]byte, []int) {
-	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{2}
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SendNotificationRequest) GetServiceId() string {
@@ -318,7 +458,7 @@ type Destination struct {
 
 func (x *Destination) Reset() {
 	*x = Destination{}
-	mi := &file_api_notify_v1_notify_proto_msgTypes[3]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -330,7 +470,7 @@ func (x *Destination) String() string {
 func (*Destination) ProtoMessage() {}
 
 func (x *Destination) ProtoReflect() protoreflect.Message {
-	mi := &file_api_notify_v1_notify_proto_msgTypes[3]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -343,7 +483,7 @@ func (x *Destination) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Destination.ProtoReflect.Descriptor instead.
 func (*Destination) Descriptor() ([]byte, []int) {
-	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{3}
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Destination) GetType() DestinationType {
@@ -369,7 +509,7 @@ type SendNotificationResponse struct {
 
 func (x *SendNotificationResponse) Reset() {
 	*x = SendNotificationResponse{}
-	mi := &file_api_notify_v1_notify_proto_msgTypes[4]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -381,7 +521,7 @@ func (x *SendNotificationResponse) String() string {
 func (*SendNotificationResponse) ProtoMessage() {}
 
 func (x *SendNotificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_notify_v1_notify_proto_msgTypes[4]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -394,7 +534,7 @@ func (x *SendNotificationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendNotificationResponse.ProtoReflect.Descriptor instead.
 func (*SendNotificationResponse) Descriptor() ([]byte, []int) {
-	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{4}
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SendNotificationResponse) GetNotificationId() string {
@@ -414,7 +554,7 @@ type StreamDeliveryStatusRequest struct {
 
 func (x *StreamDeliveryStatusRequest) Reset() {
 	*x = StreamDeliveryStatusRequest{}
-	mi := &file_api_notify_v1_notify_proto_msgTypes[5]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -426,7 +566,7 @@ func (x *StreamDeliveryStatusRequest) String() string {
 func (*StreamDeliveryStatusRequest) ProtoMessage() {}
 
 func (x *StreamDeliveryStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_notify_v1_notify_proto_msgTypes[5]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -439,7 +579,7 @@ func (x *StreamDeliveryStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamDeliveryStatusRequest.ProtoReflect.Descriptor instead.
 func (*StreamDeliveryStatusRequest) Descriptor() ([]byte, []int) {
-	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{5}
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *StreamDeliveryStatusRequest) GetNotificationId() string {
@@ -469,7 +609,7 @@ type DeliveryStatusEvent struct {
 
 func (x *DeliveryStatusEvent) Reset() {
 	*x = DeliveryStatusEvent{}
-	mi := &file_api_notify_v1_notify_proto_msgTypes[6]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -481,7 +621,7 @@ func (x *DeliveryStatusEvent) String() string {
 func (*DeliveryStatusEvent) ProtoMessage() {}
 
 func (x *DeliveryStatusEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_notify_v1_notify_proto_msgTypes[6]
+	mi := &file_api_notify_v1_notify_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -494,7 +634,7 @@ func (x *DeliveryStatusEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeliveryStatusEvent.ProtoReflect.Descriptor instead.
 func (*DeliveryStatusEvent) Descriptor() ([]byte, []int) {
-	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{6}
+	return file_api_notify_v1_notify_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DeliveryStatusEvent) GetNotificationId() string {
@@ -545,7 +685,15 @@ const file_api_notify_v1_notify_proto_rawDesc = "" +
 	"\x17RegisterServiceResponse\x12\x1d\n" +
 	"\n" +
 	"service_id\x18\x01 \x01(\tR\tserviceId\x12\x17\n" +
-	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\"\xa4\x01\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\"\x15\n" +
+	"\x13ListServicesRequest\"J\n" +
+	"\x14ListServicesResponse\x122\n" +
+	"\bservices\x18\x01 \x03(\v2\x16.notify.v1.ServiceInfoR\bservices\"R\n" +
+	"\vServiceInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1f\n" +
+	"\vwebhook_url\x18\x03 \x01(\tR\n" +
+	"webhookUrl\"\xa4\x01\n" +
 	"\x17SendNotificationRequest\x12\x1d\n" +
 	"\n" +
 	"service_id\x18\x01 \x01(\tR\tserviceId\x12\x14\n" +
@@ -577,9 +725,10 @@ const file_api_notify_v1_notify_proto_rawDesc = "" +
 	"\x1aDELIVERY_STATUS_DELIVERING\x10\x02\x12\x1d\n" +
 	"\x19DELIVERY_STATUS_DELIVERED\x10\x03\x12\x1a\n" +
 	"\x16DELIVERY_STATUS_FAILED\x10\x04\x12\x1c\n" +
-	"\x18DELIVERY_STATUS_RETRYING\x10\x052\xa8\x02\n" +
+	"\x18DELIVERY_STATUS_RETRYING\x10\x052\xf9\x02\n" +
 	"\rNotifyService\x12X\n" +
-	"\x0fRegisterService\x12!.notify.v1.RegisterServiceRequest\x1a\".notify.v1.RegisterServiceResponse\x12[\n" +
+	"\x0fRegisterService\x12!.notify.v1.RegisterServiceRequest\x1a\".notify.v1.RegisterServiceResponse\x12O\n" +
+	"\fListServices\x12\x1e.notify.v1.ListServicesRequest\x1a\x1f.notify.v1.ListServicesResponse\x12[\n" +
 	"\x10SendNotification\x12\".notify.v1.SendNotificationRequest\x1a#.notify.v1.SendNotificationResponse\x12`\n" +
 	"\x14StreamDeliveryStatus\x12&.notify.v1.StreamDeliveryStatusRequest\x1a\x1e.notify.v1.DeliveryStatusEvent0\x01B:Z8github.com/lupppig/notifyctl/pkg/grpc/notify/v1;notifyv1b\x06proto3"
 
@@ -596,33 +745,39 @@ func file_api_notify_v1_notify_proto_rawDescGZIP() []byte {
 }
 
 var file_api_notify_v1_notify_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_notify_v1_notify_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_api_notify_v1_notify_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_api_notify_v1_notify_proto_goTypes = []any{
 	(DestinationType)(0),                // 0: notify.v1.DestinationType
 	(DeliveryStatus)(0),                 // 1: notify.v1.DeliveryStatus
 	(*RegisterServiceRequest)(nil),      // 2: notify.v1.RegisterServiceRequest
 	(*RegisterServiceResponse)(nil),     // 3: notify.v1.RegisterServiceResponse
-	(*SendNotificationRequest)(nil),     // 4: notify.v1.SendNotificationRequest
-	(*Destination)(nil),                 // 5: notify.v1.Destination
-	(*SendNotificationResponse)(nil),    // 6: notify.v1.SendNotificationResponse
-	(*StreamDeliveryStatusRequest)(nil), // 7: notify.v1.StreamDeliveryStatusRequest
-	(*DeliveryStatusEvent)(nil),         // 8: notify.v1.DeliveryStatusEvent
+	(*ListServicesRequest)(nil),         // 4: notify.v1.ListServicesRequest
+	(*ListServicesResponse)(nil),        // 5: notify.v1.ListServicesResponse
+	(*ServiceInfo)(nil),                 // 6: notify.v1.ServiceInfo
+	(*SendNotificationRequest)(nil),     // 7: notify.v1.SendNotificationRequest
+	(*Destination)(nil),                 // 8: notify.v1.Destination
+	(*SendNotificationResponse)(nil),    // 9: notify.v1.SendNotificationResponse
+	(*StreamDeliveryStatusRequest)(nil), // 10: notify.v1.StreamDeliveryStatusRequest
+	(*DeliveryStatusEvent)(nil),         // 11: notify.v1.DeliveryStatusEvent
 }
 var file_api_notify_v1_notify_proto_depIdxs = []int32{
-	5, // 0: notify.v1.SendNotificationRequest.destinations:type_name -> notify.v1.Destination
-	0, // 1: notify.v1.Destination.type:type_name -> notify.v1.DestinationType
-	1, // 2: notify.v1.DeliveryStatusEvent.status:type_name -> notify.v1.DeliveryStatus
-	2, // 3: notify.v1.NotifyService.RegisterService:input_type -> notify.v1.RegisterServiceRequest
-	4, // 4: notify.v1.NotifyService.SendNotification:input_type -> notify.v1.SendNotificationRequest
-	7, // 5: notify.v1.NotifyService.StreamDeliveryStatus:input_type -> notify.v1.StreamDeliveryStatusRequest
-	3, // 6: notify.v1.NotifyService.RegisterService:output_type -> notify.v1.RegisterServiceResponse
-	6, // 7: notify.v1.NotifyService.SendNotification:output_type -> notify.v1.SendNotificationResponse
-	8, // 8: notify.v1.NotifyService.StreamDeliveryStatus:output_type -> notify.v1.DeliveryStatusEvent
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6,  // 0: notify.v1.ListServicesResponse.services:type_name -> notify.v1.ServiceInfo
+	8,  // 1: notify.v1.SendNotificationRequest.destinations:type_name -> notify.v1.Destination
+	0,  // 2: notify.v1.Destination.type:type_name -> notify.v1.DestinationType
+	1,  // 3: notify.v1.DeliveryStatusEvent.status:type_name -> notify.v1.DeliveryStatus
+	2,  // 4: notify.v1.NotifyService.RegisterService:input_type -> notify.v1.RegisterServiceRequest
+	4,  // 5: notify.v1.NotifyService.ListServices:input_type -> notify.v1.ListServicesRequest
+	7,  // 6: notify.v1.NotifyService.SendNotification:input_type -> notify.v1.SendNotificationRequest
+	10, // 7: notify.v1.NotifyService.StreamDeliveryStatus:input_type -> notify.v1.StreamDeliveryStatusRequest
+	3,  // 8: notify.v1.NotifyService.RegisterService:output_type -> notify.v1.RegisterServiceResponse
+	5,  // 9: notify.v1.NotifyService.ListServices:output_type -> notify.v1.ListServicesResponse
+	9,  // 10: notify.v1.NotifyService.SendNotification:output_type -> notify.v1.SendNotificationResponse
+	11, // 11: notify.v1.NotifyService.StreamDeliveryStatus:output_type -> notify.v1.DeliveryStatusEvent
+	8,  // [8:12] is the sub-list for method output_type
+	4,  // [4:8] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_api_notify_v1_notify_proto_init() }
@@ -636,7 +791,7 @@ func file_api_notify_v1_notify_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_notify_v1_notify_proto_rawDesc), len(file_api_notify_v1_notify_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   7,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

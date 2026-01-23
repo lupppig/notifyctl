@@ -35,3 +35,35 @@ func (s *ServiceStore) Create(ctx context.Context, svc *domain.Service) error {
 
 	return nil
 }
+func (s *ServiceStore) List(ctx context.Context) ([]*domain.Service, error) {
+	query := `
+		SELECT id, name, webhook_url, secret, api_key, created_at
+		FROM services
+		ORDER BY created_at DESC
+	`
+
+	rows, err := s.db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query services: %w", err)
+	}
+	defer rows.Close()
+
+	var services []*domain.Service
+	for rows.Next() {
+		var svc domain.Service
+		err := rows.Scan(
+			&svc.ID,
+			&svc.Name,
+			&svc.WebhookURL,
+			&svc.Secret,
+			&svc.APIKey,
+			&svc.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan service: %w", err)
+		}
+		services = append(services, &svc)
+	}
+
+	return services, nil
+}

@@ -8,6 +8,7 @@ import (
 
 type ServiceStore interface {
 	Create(ctx context.Context, svc *domain.Service) error
+	List(ctx context.Context) ([]*domain.Service, error)
 }
 
 type NotificationStore interface {
