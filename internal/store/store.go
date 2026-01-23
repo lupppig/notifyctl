@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/lupppig/notifyctl/internal/domain"
 )
@@ -27,6 +28,8 @@ type NotificationJobStore interface {
 	Create(ctx context.Context, job *domain.NotificationJob) error
 	GetByRequestID(ctx context.Context, requestID string) (*domain.NotificationJob, error)
 	UpdateStatus(ctx context.Context, requestID string, status string) error
+	FailJob(ctx context.Context, requestID string, nextRetryAt time.Time) error
+	GetRetryableJobs(ctx context.Context, limit int) ([]*domain.NotificationJob, error)
 }
 
 type DeliveryAttemptStore interface {

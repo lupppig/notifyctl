@@ -1,49 +1,118 @@
 package retry
 
 import (
-	"math"
-	"math/rand"
+	"context"
+	"encoding/json"
+	"log"
 	"time"
+
+	"github.com/lupppig/notifyctl/internal/store"
+	"github.com/nats-io/nats.go"
 )
 
+// Scheduler handles both retry logic (backoff/counts) and background job polling.
 type Scheduler struct {
-	config Config
+	config       Config
+	jobStore     store.NotificationJobStore
+	nc           *nats.Conn
+	pollInterval time.Duration
 }
 
-func NewScheduler(config Config) *Scheduler {
-	return &Scheduler{config: config}
-}
-
-// ShouldRetry returns true if attempt count is below max attempts
-func (s *Scheduler) ShouldRetry(attemptCount int) bool {
-	return attemptCount < s.config.MaxAttempts
-}
-
-// NextDelay calculates the next retry delay with exponential backoff and jitter.
-// Formula: min(initialBackoff * (multiplier ^ attempt), maxBackoff) + jitter
-func (s *Scheduler) NextDelay(attemptCount int) time.Duration {
-	backoff := float64(s.config.InitialBackoff) * math.Pow(s.config.BackoffMultiplier, float64(attemptCount))
-
-	if backoff > float64(s.config.MaxBackoff) {
-		backoff = float64(s.config.MaxBackoff)
+// NewScheduler creates a new Scheduler with the logic-only configuration.
+func NewScheduler(cfg Config) *Scheduler {
+	return &Scheduler{
+		config:       cfg,
+		pollInterval: 5 * time.Second,
 	}
-
-	// Add jitter: random value between -jitter% and +jitter%
-	if s.config.JitterFactor > 0 {
-		jitterRange := backoff * s.config.JitterFactor
-		jitter := (rand.Float64()*2 - 1) * jitterRange // -jitterRange to +jitterRange
-		backoff += jitter
-	}
-
-	// Ensure minimum delay of 100ms
-	if backoff < float64(100*time.Millisecond) {
-		backoff = float64(100 * time.Millisecond)
-	}
-
-	return time.Duration(backoff)
 }
 
-// MaxAttempts returns the configured max attempts
+// WithStore adds a job store to the scheduler for background polling.
+func (s *Scheduler) WithStore(jobStore store.NotificationJobStore) *Scheduler {
+	s.jobStore = jobStore
+	return s
+}
+
+// WithNATS adds a NATS connection to the scheduler for background polling.
+func (s *Scheduler) WithNATS(nc *nats.Conn) *Scheduler {
+	s.nc = nc
+	return s
+}
+
+// ShouldRetry returns true if the job should be retried based on attempt count.
+func (s *Scheduler) ShouldRetry(attempt int) bool {
+	return attempt < s.config.MaxAttempts
+}
+
+// NextDelay calculates the next backoff delay using the config.
+func (s *Scheduler) NextDelay(attempt int) time.Duration {
+	// Standard exponential backoff logic
+	backoff := DefaultBackoff() // Use the utility we created
+	backoff.BaseDelay = s.config.InitialBackoff
+	backoff.MaxDelay = s.config.MaxBackoff
+	backoff.Factor = s.config.BackoffMultiplier
+	backoff.Jitter = s.config.JitterFactor
+
+	return backoff.NextDelay(attempt)
+}
+
+// MaxAttempts returns the maximum configured retry attempts.
 func (s *Scheduler) MaxAttempts() int {
 	return s.config.MaxAttempts
+}
+
+// Start runs the background polling loop.
+func (s *Scheduler) Start(ctx context.Context) {
+	if s.jobStore == nil || s.nc == nil {
+		log.Println("Retry scheduler started in logic-only mode (no DB or NATS)")
+		return
+	}
+
+	ticker := time.NewTicker(s.pollInterval)
+	defer ticker.Stop()
+
+	log.Printf("Background retry scheduler started (maxRetries=%d, pollInterval=%v)", s.config.MaxAttempts, s.pollInterval)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.processRetries(ctx)
+		}
+	}
+}
+
+func (s *Scheduler) processRetries(ctx context.Context) {
+	jobs, err := s.jobStore.GetRetryableJobs(ctx, 50)
+	if err != nil {
+		log.Printf("Scheduler error fetching jobs: %v", err)
+		return
+	}
+
+	for _, job := range jobs {
+		if !s.ShouldRetry(job.RetryCount) {
+			log.Printf("Job %s exceeded max retries (%d), marking as terminal failure", job.RequestID, s.config.MaxAttempts)
+			continue
+		}
+
+		nextDelay := s.NextDelay(job.RetryCount)
+		log.Printf("Retrying job %s (attempt %d/%d) in %v", job.RequestID, job.RetryCount+1, s.config.MaxAttempts, nextDelay)
+
+		// Re-publish to NATS
+		data, err := json.Marshal(job)
+		if err != nil {
+			log.Printf("Error marshaling job %s: %v", job.RequestID, err)
+			continue
+		}
+
+		if err := s.nc.Publish("notifications.jobs", data); err != nil {
+			log.Printf("Error publishing job %s to NATS: %v", job.RequestID, err)
+			continue
+		}
+
+		// Update status to PENDING
+		if err := s.jobStore.UpdateStatus(ctx, job.RequestID, "PENDING"); err != nil {
+			log.Printf("Error updating job %s status to PENDING: %v", job.RequestID, err)
+		}
+	}
 }

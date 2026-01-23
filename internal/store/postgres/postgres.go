@@ -60,13 +60,14 @@ func (db *DB) Migrate(ctx context.Context) error {
 		);
 
 		CREATE TABLE IF NOT EXISTS notification_jobs (
-			request_id  TEXT PRIMARY KEY,
-			service_id  TEXT REFERENCES services(id),
-			payload     JSONB NOT NULL,
-			status      TEXT NOT NULL CHECK (status IN ('ACCEPTED', 'PENDING', 'DISPATCHED', 'DELIVERED', 'FAILED')),
-			retry_count INT DEFAULT 0,
-			created_at  TIMESTAMPTZ DEFAULT NOW(),
-			updated_at  TIMESTAMPTZ DEFAULT NOW()
+			request_id    TEXT PRIMARY KEY,
+			service_id    TEXT REFERENCES services(id),
+			payload       JSONB NOT NULL,
+			status        TEXT NOT NULL CHECK (status IN ('ACCEPTED', 'PENDING', 'DISPATCHED', 'DELIVERED', 'FAILED')),
+			retry_count   INT DEFAULT 0,
+			next_retry_at TIMESTAMPTZ,
+			created_at    TIMESTAMPTZ DEFAULT NOW(),
+			updated_at    TIMESTAMPTZ DEFAULT NOW()
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_notification_jobs_service_id ON notification_jobs(service_id);

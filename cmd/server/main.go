@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/lupppig/notifyctl/internal/events"
+	"github.com/lupppig/notifyctl/internal/retry"
 	"github.com/lupppig/notifyctl/internal/server"
 	"github.com/lupppig/notifyctl/internal/store/postgres"
 	"github.com/lupppig/notifyctl/internal/worker"
@@ -58,6 +59,11 @@ func main() {
 	eventHub := events.NewHub()
 	serviceStore := postgres.NewServiceStore(db)
 	jobStore := postgres.NewNotificationJobStore(db)
+
+	sched := retry.NewScheduler(retry.DefaultConfig()).
+		WithStore(jobStore).
+		WithNATS(nc)
+	go sched.Start(ctx)
 
 	w := worker.NewWorker(nc, jobStore)
 	if err := w.Start(); err != nil {
