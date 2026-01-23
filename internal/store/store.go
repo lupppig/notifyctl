@@ -23,6 +23,12 @@ type NotificationStore interface {
 	GetByID(ctx context.Context, id string) (*domain.Notification, error)
 }
 
+type NotificationJobStore interface {
+	Create(ctx context.Context, job *domain.NotificationJob) error
+	GetByRequestID(ctx context.Context, requestID string) (*domain.NotificationJob, error)
+	UpdateStatus(ctx context.Context, requestID string, status string) error
+}
+
 type DeliveryAttemptStore interface {
 	Create(ctx context.Context, attempt *domain.DeliveryAttempt) error
 }

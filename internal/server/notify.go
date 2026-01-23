@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -13,18 +15,23 @@ import (
 	"github.com/lupppig/notifyctl/internal/security"
 	"github.com/lupppig/notifyctl/internal/store"
 	notifyv1 "github.com/lupppig/notifyctl/pkg/grpc/notify/v1"
+	"github.com/nats-io/nats.go"
 )
 
 type NotifyServer struct {
 	notifyv1.UnimplementedNotifyServiceServer
 	eventHub     *events.Hub
 	serviceStore store.ServiceStore
+	jobStore     store.NotificationJobStore
+	nc           *nats.Conn
 }
 
-func NewNotifyServer(eventHub *events.Hub, serviceStore store.ServiceStore) *NotifyServer {
+func NewNotifyServer(eventHub *events.Hub, serviceStore store.ServiceStore, jobStore store.NotificationJobStore, nc *nats.Conn) *NotifyServer {
 	return &NotifyServer{
 		eventHub:     eventHub,
 		serviceStore: serviceStore,
+		jobStore:     jobStore,
+		nc:           nc,
 	}
 }
 
@@ -121,8 +128,29 @@ func (s *NotifyServer) SendNotification(ctx context.Context, req *notifyv1.SendN
 
 	notificationID := uuid.New().String()
 
-	// In a full implementation, we would save to notification store and
-	// trigger the delivery worker. For now, we'll return a success ID.
+	job := &domain.NotificationJob{
+		RequestID:  notificationID,
+		ServiceID:  req.ServiceId,
+		Payload:    req.Payload,
+		Status:     "ACCEPTED",
+		RetryCount: 0,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	if err := s.jobStore.Create(ctx, job); err != nil {
+		return nil, status.Errorf(codes.Internal, "persist job: %v", err)
+	}
+
+	// Publish to NATS
+	data, err := json.Marshal(job)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "marshal job: %v", err)
+	}
+
+	if err := s.nc.Publish("notifications.jobs", data); err != nil {
+		return nil, status.Errorf(codes.Internal, "publish to nats: %v", err)
+	}
 
 	return &notifyv1.SendNotificationResponse{
 		NotificationId: notificationID,
