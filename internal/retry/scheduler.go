@@ -18,7 +18,6 @@ type Scheduler struct {
 	pollInterval time.Duration
 }
 
-// NewScheduler creates a new Scheduler with the logic-only configuration.
 func NewScheduler(cfg Config) *Scheduler {
 	return &Scheduler{
 		config:       cfg,
@@ -38,15 +37,12 @@ func (s *Scheduler) WithNATS(nc *nats.Conn) *Scheduler {
 	return s
 }
 
-// ShouldRetry returns true if the job should be retried based on attempt count.
 func (s *Scheduler) ShouldRetry(attempt int) bool {
 	return attempt < s.config.MaxAttempts
 }
 
-// NextDelay calculates the next backoff delay using the config.
 func (s *Scheduler) NextDelay(attempt int) time.Duration {
-	// Standard exponential backoff logic
-	backoff := DefaultBackoff() // Use the utility we created
+	backoff := DefaultBackoff()
 	backoff.BaseDelay = s.config.InitialBackoff
 	backoff.MaxDelay = s.config.MaxBackoff
 	backoff.Factor = s.config.BackoffMultiplier

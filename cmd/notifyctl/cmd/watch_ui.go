@@ -24,6 +24,7 @@ var (
 	deliveredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
 	failedStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F87"))
 	pendingStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700"))
+	retryingStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00"))
 )
 
 type eventMsg *notifyv1.DeliveryStatusEvent
@@ -92,6 +93,8 @@ func (m *WatchModel) View() string {
 			statusStyled = failedStyle.Render(statusStr)
 		case notifyv1.DeliveryStatus_DELIVERY_STATUS_PENDING:
 			statusStyled = pendingStyle.Render(statusStr)
+		case notifyv1.DeliveryStatus_DELIVERY_STATUS_RETRYING:
+			statusStyled = retryingStyle.Render(statusStr)
 		default:
 			statusStyled = statusStr
 		}

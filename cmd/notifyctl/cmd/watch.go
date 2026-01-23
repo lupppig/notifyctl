@@ -17,6 +17,7 @@ import (
 
 var (
 	watchRequestID string
+	watchUI        bool
 )
 
 var watchCmd = &cobra.Command{
@@ -44,7 +45,7 @@ var watchCmd = &cobra.Command{
 			return fmt.Errorf("open stream: %w", err)
 		}
 
-		if !IsQuiet() && !IsJSONOutput() {
+		if watchUI {
 			return runWatchUI(ctx, stream)
 		}
 
@@ -52,7 +53,7 @@ var watchCmd = &cobra.Command{
 		defer out.Flush()
 
 		if !IsQuiet() && !IsJSONOutput() {
-			fmt.Fprintf(out, "Watching status for Request ID: %s...\n", watchRequestID)
+			fmt.Fprintf(out, "Watching status updates (Ctrl+C to stop)...\n")
 			fmt.Fprintf(out, "%-20s  %-15s  %s\n", "DESTINATION", "STATUS", "MESSAGE")
 			fmt.Fprintf(out, "%-20s  %-15s  %s\n", "-----------", "------", "-------")
 			out.Flush()
@@ -95,4 +96,5 @@ func init() {
 	rootCmd.AddCommand(watchCmd)
 
 	watchCmd.Flags().StringVar(&watchRequestID, "request-id", "", "Notification Request ID to watch")
+	watchCmd.Flags().BoolVar(&watchUI, "ui", false, "Enable Bubbletea TUI display")
 }
