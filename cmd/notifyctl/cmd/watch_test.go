@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/lupppig/notifyctl/internal/config"
 	notifyv1 "github.com/lupppig/notifyctl/pkg/grpc/notify/v1"
 )
 
@@ -61,9 +62,11 @@ func TestWatchCommand(t *testing.T) {
 
 	// Run command
 	watchRequestID = "notif-1"
-	watchServiceID = ""
+	globalServiceID = ""
 	quiet = true
 	defer func() { quiet = false }()
+
+	cfg = &config.Config{ServiceID: globalServiceID}
 
 	err := watchCmd.RunE(watchCmd, []string{})
 	if err != nil {

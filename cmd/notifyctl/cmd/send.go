@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 )
 
 var (
-	sendServiceID   string
 	sendPayloadPath string
 	sendRawPayload  string
 )
@@ -51,42 +49,38 @@ var sendCmd = &cobra.Command{
 			return fmt.Errorf("parse JSON payload: %w", err)
 		}
 
-		client := GetNotifyServiceClient()
+		if IsQuiet() || IsJSONOutput() {
+			client := GetNotifyServiceClient()
+			ctx, cancel := NewCommandContext(context.Background())
+			defer cancel()
 
-		ctx, cancel := NewCommandContext(context.Background())
-		defer cancel()
+			resp, err := client.SendNotification(ctx, &notifyv1.SendNotificationRequest{
+				ServiceId:    cfg.ServiceID,
+				Topic:        p.Topic,
+				Payload:      p.Payload,
+				Destinations: p.Destinations,
+			})
+			if err != nil {
+				return err
+			}
 
-		req := &notifyv1.SendNotificationRequest{
-			ServiceId:    sendServiceID,
-			Topic:        p.Topic,
-			Payload:      p.Payload,
-			Destinations: p.Destinations,
+			if IsQuiet() {
+				fmt.Println(resp.NotificationId)
+			} else {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+			}
+			return nil
 		}
 
-		resp, err := client.SendNotification(ctx, req)
-		if err != nil {
-			return fmt.Errorf("send notification: %w", err)
-		}
-
-		out := bufio.NewWriter(os.Stdout)
-		defer out.Flush()
-
-		if IsQuiet() {
-			fmt.Fprintln(out, resp.NotificationId)
-		} else {
-			fmt.Fprintf(out, "Notification sent successfully! Request ID: %s\n", resp.NotificationId)
-		}
-
-		return nil
+		m := NewSendModel(cfg.ServiceID, p.Topic, p.Payload, p.Destinations)
+		return NewUI(m).Run()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(sendCmd)
 
-	sendCmd.Flags().StringVar(&sendServiceID, "service-id", "", "Service ID (required)")
 	sendCmd.Flags().StringVar(&sendPayloadPath, "payload", "", "Path to JSON payload file")
 	sendCmd.Flags().StringVar(&sendRawPayload, "raw", "", "Raw JSON payload string")
-
-	_ = sendCmd.MarkFlagRequired("service-id")
 }

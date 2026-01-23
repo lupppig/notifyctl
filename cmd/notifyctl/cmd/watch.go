@@ -17,8 +17,6 @@ import (
 
 var (
 	watchRequestID string
-	watchServiceID string
-	watchUseUI     bool
 )
 
 var watchCmd = &cobra.Command{
@@ -26,7 +24,7 @@ var watchCmd = &cobra.Command{
 	Short: "Watch notification status",
 	Long:  "Stream real-time delivery status updates for a specific notification or service.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if watchRequestID == "" && watchServiceID == "" {
+		if watchRequestID == "" && cfg.ServiceID == "" {
 			return fmt.Errorf("must provide either --request-id or --service-id")
 		}
 
@@ -40,13 +38,13 @@ var watchCmd = &cobra.Command{
 
 		stream, err := client.StreamDeliveryStatus(ctx, &notifyv1.StreamDeliveryStatusRequest{
 			NotificationId: watchRequestID,
-			ServiceId:      watchServiceID,
+			ServiceId:      cfg.ServiceID,
 		})
 		if err != nil {
 			return fmt.Errorf("open stream: %w", err)
 		}
 
-		if watchUseUI {
+		if !IsQuiet() && !IsJSONOutput() {
 			return runWatchUI(ctx, stream)
 		}
 
@@ -97,6 +95,4 @@ func init() {
 	rootCmd.AddCommand(watchCmd)
 
 	watchCmd.Flags().StringVar(&watchRequestID, "request-id", "", "Notification Request ID to watch")
-	watchCmd.Flags().StringVar(&watchServiceID, "service-id", "", "Service ID to watch (streams all notifications for this service)")
-	watchCmd.Flags().BoolVar(&watchUseUI, "ui", false, "Use TUI for watching status")
 }

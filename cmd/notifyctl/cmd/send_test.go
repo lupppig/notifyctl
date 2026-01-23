@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/lupppig/notifyctl/internal/config"
 	notifyv1 "github.com/lupppig/notifyctl/pkg/grpc/notify/v1"
 )
 
@@ -35,9 +36,12 @@ func TestSendNotification(t *testing.T) {
 	os.Stdout = w
 
 	// Run command
-	sendServiceID = "svc-1"
+	globalServiceID = "svc-1"
 	sendRawPayload = `{"topic": "test-topic", "payload": {"foo": "bar"}, "destinations": [{"type": 1, "target": "http://webhook.com"}]}`
 	sendPayloadPath = ""
+	jsonOut = true
+
+	cfg = &config.Config{ServiceID: globalServiceID}
 
 	err := sendCmd.RunE(sendCmd, []string{})
 	if err != nil {
@@ -51,9 +55,6 @@ func TestSendNotification(t *testing.T) {
 	io.Copy(&buf, r)
 	output := buf.String()
 
-	if !strings.Contains(output, "Notification sent successfully!") {
-		t.Errorf("expected success message, got: %s", output)
-	}
 	if !strings.Contains(output, "notif-123") {
 		t.Errorf("expected notification ID, got: %s", output)
 	}
@@ -99,9 +100,12 @@ func TestSendNotificationFromFile(t *testing.T) {
 	os.Stdout = w
 
 	// Run command
-	sendServiceID = "svc-file"
+	globalServiceID = "svc-file"
 	sendPayloadPath = tmpFile.Name()
 	sendRawPayload = ""
+	jsonOut = true
+
+	cfg = &config.Config{ServiceID: globalServiceID}
 
 	err = sendCmd.RunE(sendCmd, []string{})
 	if err != nil {

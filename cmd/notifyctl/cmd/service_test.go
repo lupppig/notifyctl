@@ -67,6 +67,8 @@ func TestServiceCreate(t *testing.T) {
 	svcName = "test-service"
 	svcWebhookURL = "http://localhost:8080"
 	svcSecret = "secret"
+	quiet = true
+	defer func() { quiet = false }()
 
 	err := createServiceCmd.RunE(createServiceCmd, []string{})
 	if err != nil {
@@ -80,9 +82,6 @@ func TestServiceCreate(t *testing.T) {
 	io.Copy(&buf, r)
 	output := buf.String()
 
-	if !strings.Contains(output, "Service created successfully!") {
-		t.Errorf("expected success message, got: %s", output)
-	}
 	if !strings.Contains(output, "svc-123") {
 		t.Errorf("expected service ID, got: %s", output)
 	}

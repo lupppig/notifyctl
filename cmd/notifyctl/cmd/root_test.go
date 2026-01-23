@@ -66,7 +66,7 @@ func TestNewCommandContext(t *testing.T) {
 				if !ok {
 					t.Error("expected metadata to be present in context")
 				}
-				tokens := md.Get("x-auth-token")
+				tokens := md.Get("x-api-key")
 				if len(tokens) == 0 || tokens[0] != tt.tokenVal {
 					t.Errorf("expected auth token %s, got %v", tt.tokenVal, tokens)
 				}

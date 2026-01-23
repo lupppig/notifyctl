@@ -104,6 +104,21 @@ func (s *NotifyServer) StreamDeliveryStatus(
 	return nil
 }
 
+func (s *NotifyServer) SendNotification(ctx context.Context, req *notifyv1.SendNotificationRequest) (*notifyv1.SendNotificationResponse, error) {
+	if req.ServiceId == "" {
+		return nil, status.Error(codes.InvalidArgument, "service_id required")
+	}
+
+	notificationID := uuid.New().String()
+
+	// In a full implementation, we would save to notification store and
+	// trigger the delivery worker. For now, we'll return a success ID.
+
+	return &notifyv1.SendNotificationResponse{
+		NotificationId: notificationID,
+	}, nil
+}
+
 func (s *NotifyServer) DeleteService(ctx context.Context, req *notifyv1.DeleteServiceRequest) (*notifyv1.DeleteServiceResponse, error) {
 	if req.Id == "" {
 		return nil, status.Error(codes.InvalidArgument, "id required")

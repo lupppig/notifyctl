@@ -17,13 +17,14 @@ import (
 )
 
 var (
-	timeout    time.Duration
-	jsonOut    bool
-	quiet      bool
-	authToken  string
-	configPath string
-	cfg        *config.Config
-	grpcConn   *grpc.ClientConn
+	timeout         time.Duration
+	jsonOut         bool
+	quiet           bool
+	authToken       string
+	globalServiceID string
+	configPath      string
+	cfg             *config.Config
+	grpcConn        *grpc.ClientConn
 
 	// clientFactory is used for unit testing
 	clientFactory func(grpc.ClientConnInterface) notifyv1.NotifyServiceClient
@@ -57,6 +58,14 @@ Send events, manage destinations, and monitor delivery status in real-time.`,
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
+		// Sync flags with config (Flags take precedence)
+		if authToken != "" {
+			cfg.APIKey = authToken
+		}
+		if globalServiceID != "" {
+			cfg.ServiceID = globalServiceID
+		}
+
 		// Commands that don't require pre-configured auth/context
 		if cmd.Name() == "version" || cmd.Name() == "create" {
 			return initGRPCClient()
@@ -66,16 +75,16 @@ Send events, manage destinations, and monitor delivery status in real-time.`,
 		// as they either create them, list them, or take an ID as a flag.
 		if cmd.Parent() != nil && cmd.Parent().Name() == "service" {
 			if cfg.APIKey == "" {
-				return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use config file)")
+				return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use --auth-token)")
 			}
 			return initGRPCClient()
 		}
 
 		if cfg.APIKey == "" {
-			return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use config file)")
+			return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use --auth-token)")
 		}
 		if cfg.ServiceID == "" {
-			return fmt.Errorf("missing Service ID (set NOTIFYCTL_SERVICE_ID or use config file)")
+			return fmt.Errorf("missing Service ID (set NOTIFYCTL_SERVICE_ID or use --service-id)")
 		}
 
 		return initGRPCClient()
@@ -98,6 +107,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "Output in JSON format")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Suppress non-essential output")
 	rootCmd.PersistentFlags().StringVar(&authToken, "auth-token", "", "Authentication token (optional)")
+	rootCmd.PersistentFlags().StringVar(&globalServiceID, "service-id", "", "Service ID (optional, overrides config)")
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default is $HOME/.notifyctl.yaml)")
 }
 
@@ -155,7 +165,7 @@ func NewCommandContext(parent context.Context) (context.Context, context.CancelF
 	}
 
 	if authToken != "" {
-		md := metadata.Pairs("x-auth-token", authToken)
+		md := metadata.Pairs("x-api-key", authToken)
 		ctx = metadata.NewOutgoingContext(ctx, md)
 	}
 
