@@ -3,9 +3,10 @@ package retry
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"time"
 
+	"github.com/lupppig/notifyctl/internal/logging"
 	"github.com/lupppig/notifyctl/internal/store"
 	"github.com/nats-io/nats.go"
 )
@@ -59,18 +60,23 @@ func (s *Scheduler) MaxAttempts() int {
 // Start runs the background polling loop.
 func (s *Scheduler) Start(ctx context.Context) {
 	if s.jobStore == nil || s.nc == nil {
-		log.Println("Retry scheduler started in logic-only mode (no DB or NATS)")
+		slog.Warn("retry scheduler started in logic-only mode", slog.String("code", "SYS_STARTUP"))
 		return
 	}
 
 	ticker := time.NewTicker(s.pollInterval)
 	defer ticker.Stop()
 
-	log.Printf("Background retry scheduler started (maxRetries=%d, pollInterval=%v)", s.config.MaxAttempts, s.pollInterval)
+	slog.Info("background retry scheduler started",
+		slog.String("code", "SYS_STARTUP"),
+		slog.Int("maxRetries", s.config.MaxAttempts),
+		slog.Duration("pollInterval", s.pollInterval),
+	)
 
 	for {
 		select {
 		case <-ctx.Done():
+			slog.Info("background retry scheduler shutting down", slog.String("code", "SYS_SHUTDOWN"))
 			return
 		case <-ticker.C:
 			s.processRetries(ctx)
@@ -81,43 +87,49 @@ func (s *Scheduler) Start(ctx context.Context) {
 func (s *Scheduler) processRetries(ctx context.Context) {
 	jobs, err := s.jobStore.GetRetryableJobs(ctx, 50)
 	if err != nil {
-		log.Printf("Scheduler error fetching jobs: %v", err)
+		slog.Error("scheduler error fetching jobs", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 		return
 	}
 
 	for _, job := range jobs {
+		ctx := logging.WithEventID(ctx, job.RequestID)
+		ctx = logging.WithService(ctx, job.ServiceID, "")
+		l := logging.FromContext(ctx)
+
 		if !s.ShouldRetry(job.RetryCount) {
-			log.Printf("[%s] ACTION: Terminal Failure | Job %s exceeded max retries (%d)",
-				time.Now().Format(time.RFC3339), job.RequestID, s.config.MaxAttempts)
-			// Record stat
+			l.Error("terminal failure: max retries exceeded",
+				slog.String("code", "DEL_FAILED"),
+				slog.Int("attempts", job.RetryCount),
+				slog.Int("maxAttempts", s.config.MaxAttempts),
+			)
 			if err := s.jobStore.IncrementStats(ctx, job.ServiceID, "FAILED", time.Now()); err != nil {
-				log.Printf("[ERROR] Failed to increment stats: %v", err)
+				l.Warn("failed to increment stats", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 			}
 			continue
 		}
 
 		nextDelay := s.NextDelay(job.RetryCount)
-		log.Printf("[%s] ACTION: Re-enqueueing Job | ID: %s | Attempt: %d/%d | Next Delay: %v",
-			time.Now().Format(time.RFC3339), job.RequestID, job.RetryCount+1, s.config.MaxAttempts, nextDelay)
+		l.Info("re-enqueueing job for retry",
+			slog.String("code", "DEL_RETRY"),
+			slog.Int("attempt", job.RetryCount+1),
+			slog.Duration("delay", nextDelay),
+		)
 
-		// Re-publish to NATS
 		data, err := json.Marshal(job)
 		if err != nil {
-			log.Printf("[ERROR] Failed to marshal job %s: %v", job.RequestID, err)
+			l.Error("failed to marshal job", slog.String("code", "SYS_ERR"), slog.Any("error", err))
 			continue
 		}
 
 		if err := s.nc.Publish("notifications.jobs", data); err != nil {
-			log.Printf("[ERROR] Failed to publish job %s to NATS: %v", job.RequestID, err)
+			l.Error("failed to publish job to NATS", slog.String("code", "BROKER_ERROR"), slog.Any("error", err))
 			continue
 		}
 
-		// Update status to PENDING
 		if err := s.jobStore.UpdateStatus(ctx, job.RequestID, "PENDING"); err != nil {
-			log.Printf("[ERROR] Failed to update status to PENDING for job %s: %v", job.RequestID, err)
+			l.Error("failed to update status to PENDING", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 		} else {
-			log.Printf("[%s] SUCCESS: Job %s re-enqueued and status updated to PENDING",
-				time.Now().Format(time.RFC3339), job.RequestID)
+			l.Info("job re-enqueued and status updated to PENDING", slog.String("code", "JOB_REENQUEUED"))
 		}
 	}
 }

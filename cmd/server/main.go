@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/lupppig/notifyctl/internal/events"
+	"github.com/lupppig/notifyctl/internal/logging"
 	"github.com/lupppig/notifyctl/internal/retry"
 	"github.com/lupppig/notifyctl/internal/server"
 	"github.com/lupppig/notifyctl/internal/store/postgres"
@@ -26,6 +27,7 @@ const (
 )
 
 func main() {
+	logging.Init()
 	ctx := context.Background()
 
 	// 1. Initialize Postgres

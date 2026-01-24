@@ -3,10 +3,11 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/lupppig/notifyctl/internal/domain"
+	"github.com/lupppig/notifyctl/internal/logging"
 	"github.com/lupppig/notifyctl/internal/store"
 	"github.com/nats-io/nats.go"
 )
@@ -24,29 +25,27 @@ func NewWorker(nc *nats.Conn, jobStore store.NotificationJobStore) *Worker {
 }
 
 func (w *Worker) Start() error {
-	log.Printf("Worker starting and subscribing to notifications.jobs...")
+	slog.Info("worker starting and subscribing to notifications.jobs", slog.String("code", "SYS_STARTUP"))
 	_, err := w.nc.Subscribe("notifications.jobs", func(m *nats.Msg) {
 		var job domain.NotificationJob
 		if err := json.Unmarshal(m.Data, &job); err != nil {
-			log.Printf("[ERROR] Failed to unmarshal job from NATS: %v", err)
+			slog.Error("failed to unmarshal job from NATS", slog.String("code", "BROKER_ERROR"), slog.Any("error", err))
 			return
 		}
 
-		log.Printf("[%s] ACTION: Processing job | ID: %s | Service: %s | Status: %s | Attempt: %d",
-			time.Now().Format(time.RFC3339), job.RequestID, job.ServiceID, job.Status, job.RetryCount)
+		ctx := context.Background()
+		ctx = logging.WithEventID(ctx, job.RequestID)
+		ctx = logging.WithService(ctx, job.ServiceID, "") // We don't have service name here yet, but we have ID
+		l := logging.FromContext(ctx)
 
-		// Update status to DISPATCHED
-		log.Printf("[%s] ACTION: Updating job status to DISPATCHED | ID: %s", time.Now().Format(time.RFC3339), job.RequestID)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		l.Info("processing job", slog.String("code", "JOB_PROC_START"), slog.Int("attempt", job.RetryCount))
 
 		if err := w.jobStore.UpdateStatus(ctx, job.RequestID, "DISPATCHED"); err != nil {
-			log.Printf("[ERROR] Failed to update status for %s: %v", job.RequestID, err)
+			l.Error("failed to update job status", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 		} else {
-			log.Printf("[%s] SUCCESS: Job %s status updated to DISPATCHED", time.Now().Format(time.RFC3339), job.RequestID)
-			// Record stat
+			l.Info("job status updated to DISPATCHED", slog.String("code", "JOB_DISPATCHED"))
 			if err := w.jobStore.IncrementStats(ctx, job.ServiceID, "DISPATCHED", time.Now()); err != nil {
-				log.Printf("[ERROR] Failed to increment stats: %v", err)
+				l.Warn("failed to increment stats", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 			}
 
 			// Simulate delivery for tracking verification
@@ -54,9 +53,13 @@ func (w *Worker) Start() error {
 				time.Sleep(1 * time.Second)
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
+				ctx = logging.WithEventID(ctx, requestID)
+				ctx = logging.WithService(ctx, serviceID, "")
+				l := logging.FromContext(ctx)
+
 				_ = w.jobStore.UpdateStatus(ctx, requestID, "DELIVERED")
 				_ = w.jobStore.IncrementStats(ctx, serviceID, "DELIVERED", time.Now())
-				log.Printf("[%s] SIMULATED: Job %s delivered", time.Now().Format(time.RFC3339), requestID)
+				l.Info("job delivered successfully", slog.String("code", "DEL_SUCCESS"))
 			}(job.ServiceID, job.RequestID)
 		}
 	})
@@ -64,6 +67,6 @@ func (w *Worker) Start() error {
 		return err
 	}
 
-	log.Println("Worker ready.")
+	slog.Info("worker ready", slog.String("code", "SYS_READY"))
 	return nil
 }

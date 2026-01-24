@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/lupppig/notifyctl/internal/domain"
 	"github.com/lupppig/notifyctl/internal/events"
+	"github.com/lupppig/notifyctl/internal/logging"
 	"github.com/lupppig/notifyctl/internal/security"
 	"github.com/lupppig/notifyctl/internal/store"
 	notifyv1 "github.com/lupppig/notifyctl/pkg/grpc/notify/v1"
@@ -54,17 +56,20 @@ func (s *NotifyServer) RegisterService(ctx context.Context, req *notifyv1.Regist
 		APIKey:     security.HashKey(rawKey),
 	}
 
-	log.Printf("[%s] ACTION: Registering service | Name: %s", time.Now().Format(time.RFC3339), req.Name)
+	ctx = logging.WithService(ctx, svc.ID, svc.Name)
+	l := logging.FromContext(ctx)
+
+	l.Info("registering service", slog.String("code", "SYS_SVC_REG"))
 	if err := s.serviceStore.Create(ctx, svc); err != nil {
 		if errors.Is(err, store.ErrAlreadyExists) {
-			log.Printf("[WARN] Service already exists: %s", req.Name)
+			l.Warn("service already exists", slog.String("code", "SYS_SVC_EXISTS"))
 			return nil, status.Errorf(codes.AlreadyExists, "service with name %q already exists", req.Name)
 		}
-		log.Printf("[ERROR] Failed to create service: %v", err)
+		l.Error("failed to create service", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 		return nil, status.Errorf(codes.Internal, "create service: %v", err)
 	}
 
-	log.Printf("[%s] SUCCESS: Service registered | ID: %s", time.Now().Format(time.RFC3339), svc.ID)
+	l.Info("service registered successfully", slog.String("code", "SYS_SVC_CREATED"))
 	return &notifyv1.RegisterServiceResponse{
 		ServiceId: svc.ID,
 		ApiKey:    rawKey,
@@ -72,10 +77,9 @@ func (s *NotifyServer) RegisterService(ctx context.Context, req *notifyv1.Regist
 }
 
 func (s *NotifyServer) ListServices(ctx context.Context, req *notifyv1.ListServicesRequest) (*notifyv1.ListServicesResponse, error) {
-	log.Printf("[%s] ACTION: Listing services", time.Now().Format(time.RFC3339))
 	services, err := s.serviceStore.List(ctx)
 	if err != nil {
-		log.Printf("[ERROR] Failed to list services: %v", err)
+		logging.FromContext(ctx).Error("failed to list services", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 		return nil, status.Errorf(codes.Internal, "list services: %v", err)
 	}
 
@@ -151,29 +155,32 @@ func (s *NotifyServer) SendNotification(ctx context.Context, req *notifyv1.SendN
 		UpdatedAt:  time.Now(),
 	}
 
-	log.Printf("[%s] ACTION: Sending notification | Service: %s | Topic: %s", time.Now().Format(time.RFC3339), req.ServiceId, req.Topic)
+	ctx = logging.WithEventID(ctx, notificationID)
+	l := logging.FromContext(ctx).With("topic", req.Topic)
+
 	if err := s.jobStore.Create(ctx, job); err != nil {
-		log.Printf("[ERROR] Failed to persist job: %v", err)
+		l.Error("failed to persist job", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 		return nil, status.Errorf(codes.Internal, "persist job: %v", err)
 	}
 
 	// Record stat
 	if err := s.jobStore.IncrementStats(ctx, req.ServiceId, "ACCEPTED", time.Now()); err != nil {
-		log.Printf("[ERROR] Failed to increment stats: %v", err)
+		l.Warn("failed to increment stats", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 	}
 
 	// Publish to NATS
 	data, err := json.Marshal(job)
 	if err != nil {
+		l.Error("failed to marshal job", slog.String("code", "SYS_ERR"), slog.Any("error", err))
 		return nil, status.Errorf(codes.Internal, "marshal job: %v", err)
 	}
 
 	if err := s.nc.Publish("notifications.jobs", data); err != nil {
-		log.Printf("[ERROR] Failed to publish to NATS: %v", err)
+		l.Error("failed to publish to NATS", slog.String("code", "BROKER_ERROR"), slog.Any("error", err))
 		return nil, status.Errorf(codes.Internal, "publish to nats: %v", err)
 	}
 
-	log.Printf("[%s] SUCCESS: Notification enqueued | ID: %s", time.Now().Format(time.RFC3339), notificationID)
+	l.Info("notification accepted and enqueued", slog.String("code", "EVT_ACCEPTED"))
 	return &notifyv1.SendNotificationResponse{
 		NotificationId: notificationID,
 	}, nil
@@ -192,10 +199,9 @@ func (s *NotifyServer) DeleteService(ctx context.Context, req *notifyv1.DeleteSe
 }
 
 func (s *NotifyServer) ListNotificationJobs(ctx context.Context, req *notifyv1.ListNotificationJobsRequest) (*notifyv1.ListNotificationJobsResponse, error) {
-	log.Printf("[%s] ACTION: Listing notification jobs | Service: %s", time.Now().Format(time.RFC3339), req.ServiceId)
 	jobs, err := s.jobStore.List(ctx, req.ServiceId)
 	if err != nil {
-		log.Printf("[ERROR] Failed to list jobs: %v", err)
+		logging.FromContext(ctx).Error("failed to list jobs", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 		return nil, status.Errorf(codes.Internal, "list jobs: %v", err)
 	}
 
@@ -226,10 +232,9 @@ func (s *NotifyServer) ListNotificationJobs(ctx context.Context, req *notifyv1.L
 }
 
 func (s *NotifyServer) GetStats(ctx context.Context, req *notifyv1.GetStatsRequest) (*notifyv1.GetStatsResponse, error) {
-	log.Printf("[%s] ACTION: Getting stats | Service: %s", time.Now().Format(time.RFC3339), req.ServiceId)
 	stats, err := s.jobStore.GetStats(ctx, req.ServiceId)
 	if err != nil {
-		log.Printf("[ERROR] Failed to get stats: %v", err)
+		logging.FromContext(ctx).Error("failed to get stats", slog.String("code", "DB_ERROR"), slog.Any("error", err))
 		return nil, status.Errorf(codes.Internal, "get stats: %v", err)
 	}
 

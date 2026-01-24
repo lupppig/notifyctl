@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"github.com/lupppig/notifyctl/internal/logging"
 	"github.com/lupppig/notifyctl/internal/security"
 	"github.com/lupppig/notifyctl/internal/store"
 )
@@ -54,6 +55,7 @@ func (a *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 
 		// Inject service into context
 		newCtx := context.WithValue(ctx, "service", svc)
+		newCtx = logging.WithService(newCtx, svc.ID, svc.Name)
 		return handler(newCtx, req)
 	}
 }
@@ -83,6 +85,8 @@ func (a *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
 			return status.Error(codes.Unauthenticated, "invalid API key")
 		}
 
+		// Currently grpc.ServerStream doesn't support easy context injection without wrapping
+		// For now we just verify the key. Status streaming doesn't use service_name in logs yet.
 		return handler(srv, ss)
 	}
 }
