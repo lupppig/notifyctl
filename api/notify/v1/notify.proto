@@ -12,6 +12,7 @@ service NotifyService {
   rpc StreamDeliveryStatus(StreamDeliveryStatusRequest) returns (stream DeliveryStatusEvent);
   rpc ListNotificationJobs(ListNotificationJobsRequest) returns (ListNotificationJobsResponse);
   rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+  rpc StreamLogs(StreamLogsRequest) returns (stream LogLine);
 }
 
 // RegisterService messages
@@ -129,4 +130,12 @@ message GetStatsResponse {
 message StatEntry {
   string status = 1;
   int64 count = 2;
+}
+
+// StreamLogs messages
+
+message StreamLogsRequest {}
+
+message LogLine {
+  string line = 1;
 }

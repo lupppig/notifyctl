@@ -251,6 +251,23 @@ func (s *NotifyServer) GetStats(ctx context.Context, req *notifyv1.GetStatsReque
 	}, nil
 }
 
+func (s *NotifyServer) StreamLogs(req *notifyv1.StreamLogsRequest, stream notifyv1.NotifyService_StreamLogsServer) error {
+	id := uuid.New().String()
+	ch := logging.GetHub().Subscribe(id)
+	defer logging.GetHub().Unsubscribe(id)
+
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case line := <-ch:
+			if err := stream.Send(&notifyv1.LogLine{Line: line}); err != nil {
+				return err
+			}
+		}
+	}
+}
+
 func mapStatus(status events.DeliveryStatus) notifyv1.DeliveryStatus {
 	switch status {
 	case events.DeliveryStatusPending:

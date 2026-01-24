@@ -14,3 +14,28 @@
 {"time":"2026:01:24:10:17:33","level":"INFO","msg":"gRPC server listening on :50051"}
 {"time":"2026:01:24:10:17:36","level":"INFO","msg":"registering service","service_id":"479633a5-34f9-4e11-a6f7-fd0996808ad7","service_name":"ConsoleVerify","code":"SYS_SVC_REG"}
 {"time":"2026:01:24:10:17:36","level":"INFO","msg":"service registered successfully","service_id":"479633a5-34f9-4e11-a6f7-fd0996808ad7","service_name":"ConsoleVerify","code":"SYS_SVC_CREATED"}
+{"time":"2026:01:24:10:18:43","level":"INFO","msg":"[2026-01-24T10:18:43+01:00] SUCCESS: Listed 3 jobs"}
+{"time":"2026:01:24:10:31:41","level":"INFO","msg":"worker starting and subscribing to notifications.jobs","code":"SYS_STARTUP"}
+{"time":"2026:01:24:10:31:41","level":"INFO","msg":"worker ready","code":"SYS_READY"}
+{"time":"2026:01:24:10:31:41","level":"INFO","msg":"background retry scheduler started","code":"SYS_STARTUP","maxRetries":5,"pollInterval":5000000000}
+{"time":"2026:01:24:10:31:41","level":"INFO","msg":"gRPC server listening on :50051"}
+{"time":"2026:01:24:10:31:45","level":"INFO","msg":"registering service","service_id":"2f314d50-1dac-45b8-b688-56fd1c47953f","service_name":"StreamVerify","code":"SYS_SVC_REG"}
+{"time":"2026:01:24:10:31:45","level":"INFO","msg":"service registered successfully","service_id":"2f314d50-1dac-45b8-b688-56fd1c47953f","service_name":"StreamVerify","code":"SYS_SVC_CREATED"}
+{"time":"2026:01:24:10:34:16","level":"INFO","msg":"worker starting and subscribing to notifications.jobs","code":"SYS_STARTUP"}
+{"time":"2026:01:24:10:34:16","level":"INFO","msg":"worker ready","code":"SYS_READY"}
+{"time":"2026:01:24:10:34:16","level":"INFO","msg":"background retry scheduler started","code":"SYS_STARTUP","maxRetries":5,"pollInterval":5000000000}
+{"time":"2026:01:24:10:34:16","level":"INFO","msg":"gRPC server listening on :50051"}
+{"time":"2026:01:24:10:34:21","level":"INFO","msg":"registering service","service_id":"4660168f-e577-4a12-b86d-be186688149c","service_name":"StreamVerify","code":"SYS_SVC_REG"}
+{"time":"2026:01:24:10:34:21","level":"WARN","msg":"service already exists","service_id":"4660168f-e577-4a12-b86d-be186688149c","service_name":"StreamVerify","code":"SYS_SVC_EXISTS"}
+{"time":"2026:01:24:10:43:30","level":"INFO","msg":"worker starting and subscribing to notifications.jobs","code":"SYS_STARTUP"}
+{"time":"2026:01:24:10:43:30","level":"INFO","msg":"worker ready","code":"SYS_READY"}
+{"time":"2026:01:24:10:43:30","level":"INFO","msg":"background retry scheduler started","code":"SYS_STARTUP","maxRetries":5,"pollInterval":5000000000}
+{"time":"2026:01:24:10:43:30","level":"INFO","msg":"gRPC server listening on :50051"}
+{"time":"2026:01:24:10:43:34","level":"INFO","msg":"registering service","service_id":"0e4fe659-0248-4225-807d-5a8b5f0a67fd","service_name":"StreamVerify-1769247809","code":"SYS_SVC_REG"}
+{"time":"2026:01:24:10:43:34","level":"INFO","msg":"service registered successfully","service_id":"0e4fe659-0248-4225-807d-5a8b5f0a67fd","service_name":"StreamVerify-1769247809","code":"SYS_SVC_CREATED"}
+{"time":"2026:01:24:10:59:25","level":"INFO","msg":"worker starting and subscribing to notifications.jobs","code":"SYS_STARTUP"}
+{"time":"2026:01:24:10:59:25","level":"INFO","msg":"background retry scheduler started","code":"SYS_STARTUP","maxRetries":5,"pollInterval":5000000000}
+{"time":"2026:01:24:10:59:25","level":"INFO","msg":"worker ready","code":"SYS_READY"}
+{"time":"2026:01:24:10:59:25","level":"INFO","msg":"gRPC server listening on :50051"}
+{"time":"2026:01:24:10:59:29","level":"INFO","msg":"registering service","service_id":"7247f65e-12ac-4d07-ba97-7739176e6db2","service_name":"StreamVerify-1769248763","code":"SYS_SVC_REG"}
+{"time":"2026:01:24:10:59:29","level":"INFO","msg":"service registered successfully","service_id":"7247f65e-12ac-4d07-ba97-7739176e6db2","service_name":"StreamVerify-1769248763","code":"SYS_SVC_CREATED"}

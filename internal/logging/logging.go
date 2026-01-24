@@ -127,6 +127,52 @@ func (h *ConsoleHandler) WithGroup(name string) slog.Handler {
 	return h
 }
 
+// StreamingHandler sends JSON logs to the LogHub
+type StreamingHandler struct {
+	jsonHandler slog.Handler
+	hub         *LogHub
+}
+
+func (h *StreamingHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.jsonHandler.Enabled(ctx, level)
+}
+
+func (h *StreamingHandler) Handle(ctx context.Context, r slog.Record) error {
+	var buf strings.Builder
+	h2 := slog.NewJSONHandler(&buf, &slog.HandlerOptions{
+		Level:       slog.LevelInfo,
+		ReplaceAttr: h.replaceAttr,
+	})
+	if err := h2.Handle(ctx, r); err != nil {
+		return err
+	}
+	h.hub.Broadcast(strings.TrimSpace(buf.String()))
+	return nil
+}
+
+func (h *StreamingHandler) replaceAttr(groups []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey {
+		if t, ok := a.Value.Any().(time.Time); ok {
+			return slog.String(a.Key, t.Format("2006:01:02:15:04:05"))
+		}
+	}
+	return a
+}
+
+func (h *StreamingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &StreamingHandler{
+		jsonHandler: h.jsonHandler.WithAttrs(attrs),
+		hub:         h.hub,
+	}
+}
+
+func (h *StreamingHandler) WithGroup(name string) slog.Handler {
+	return &StreamingHandler{
+		jsonHandler: h.jsonHandler.WithGroup(name),
+		hub:         h.hub,
+	}
+}
+
 func Init() {
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelInfo,
@@ -143,18 +189,26 @@ func Init() {
 	// Stdout: Custom Console format
 	stdoutHandler := &ConsoleHandler{out: os.Stdout, options: opts}
 
+	// LogHub for Streaming
+	hubHandler := &StreamingHandler{
+		jsonHandler: slog.NewJSONHandler(io.Discard, opts),
+		hub:         GetHub(),
+	}
+
 	// File: JSON format
 	logFile, err := os.OpenFile("notifyctl.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		slog.Error("failed to open log file", slog.Any("error", err))
-		slog.SetDefault(slog.New(stdoutHandler))
+		slog.SetDefault(slog.New(&MultiHandler{
+			handlers: []slog.Handler{stdoutHandler, hubHandler},
+		}))
 		return
 	}
 
 	jsonHandler := slog.NewJSONHandler(logFile, opts)
 
 	logger := slog.New(&MultiHandler{
-		handlers: []slog.Handler{stdoutHandler, jsonHandler},
+		handlers: []slog.Handler{stdoutHandler, jsonHandler, hubHandler},
 	})
 	slog.SetDefault(logger)
 }

@@ -31,6 +31,7 @@ func (a *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 	) (interface{}, error) {
 		if info.FullMethod == "/notify.v1.NotifyService/RegisterService" ||
 			info.FullMethod == "/notify.v1.NotifyService/ListServices" ||
+			info.FullMethod == "/notify.v1.NotifyService/StreamLogs" ||
 			info.FullMethod == "/grpc.health.v1.Health/Check" {
 			return handler(ctx, req)
 		}
@@ -67,6 +68,11 @@ func (a *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler,
 	) error {
+		if info.FullMethod == "/notify.v1.NotifyService/StreamDeliveryStatus" ||
+			info.FullMethod == "/notify.v1.NotifyService/StreamLogs" {
+			return handler(srv, ss)
+		}
+
 		md, ok := metadata.FromIncomingContext(ss.Context())
 		if !ok {
 			return status.Error(codes.Unauthenticated, "missing metadata")

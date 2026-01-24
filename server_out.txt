@@ -1,6 +1,0 @@
-[2026:01:24:10:17:33] [INFO] worker starting and subscribing to notifications.jobs [sys_startup]
-[2026:01:24:10:17:33] [INFO] background retry scheduler started [sys_startup] | maxRetries=5 pollInterval=5s
-[2026:01:24:10:17:33] [INFO] worker ready [sys_ready]
-[2026:01:24:10:17:33] [INFO] gRPC server listening on :50051
-[2026:01:24:10:17:36] [INFO] registering service [sys_svc_reg] | service_id=479633a5-34f9-4e11-a6f7-fd0996808ad7 service_name=ConsoleVerify
-[2026:01:24:10:17:36] [INFO] service registered successfully [sys_svc_created] | service_id=479633a5-34f9-4e11-a6f7-fd0996808ad7 service_name=ConsoleVerify

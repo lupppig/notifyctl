@@ -26,6 +26,7 @@ const (
 	NotifyService_StreamDeliveryStatus_FullMethodName = "/notify.v1.NotifyService/StreamDeliveryStatus"
 	NotifyService_ListNotificationJobs_FullMethodName = "/notify.v1.NotifyService/ListNotificationJobs"
 	NotifyService_GetStats_FullMethodName             = "/notify.v1.NotifyService/GetStats"
+	NotifyService_StreamLogs_FullMethodName           = "/notify.v1.NotifyService/StreamLogs"
 )
 
 // NotifyServiceClient is the client API for NotifyService service.
@@ -39,6 +40,7 @@ type NotifyServiceClient interface {
 	StreamDeliveryStatus(ctx context.Context, in *StreamDeliveryStatusRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DeliveryStatusEvent], error)
 	ListNotificationJobs(ctx context.Context, in *ListNotificationJobsRequest, opts ...grpc.CallOption) (*ListNotificationJobsResponse, error)
 	GetStats(ctx context.Context, in *GetStatsRequest, opts ...grpc.CallOption) (*GetStatsResponse, error)
+	StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogLine], error)
 }
 
 type notifyServiceClient struct {
@@ -128,6 +130,25 @@ func (c *notifyServiceClient) GetStats(ctx context.Context, in *GetStatsRequest,
 	return out, nil
 }
 
+func (c *notifyServiceClient) StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogLine], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &NotifyService_ServiceDesc.Streams[1], NotifyService_StreamLogs_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamLogsRequest, LogLine]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type NotifyService_StreamLogsClient = grpc.ServerStreamingClient[LogLine]
+
 // NotifyServiceServer is the server API for NotifyService service.
 // All implementations must embed UnimplementedNotifyServiceServer
 // for forward compatibility.
@@ -139,6 +160,7 @@ type NotifyServiceServer interface {
 	StreamDeliveryStatus(*StreamDeliveryStatusRequest, grpc.ServerStreamingServer[DeliveryStatusEvent]) error
 	ListNotificationJobs(context.Context, *ListNotificationJobsRequest) (*ListNotificationJobsResponse, error)
 	GetStats(context.Context, *GetStatsRequest) (*GetStatsResponse, error)
+	StreamLogs(*StreamLogsRequest, grpc.ServerStreamingServer[LogLine]) error
 	mustEmbedUnimplementedNotifyServiceServer()
 }
 
@@ -169,6 +191,9 @@ func (UnimplementedNotifyServiceServer) ListNotificationJobs(context.Context, *L
 }
 func (UnimplementedNotifyServiceServer) GetStats(context.Context, *GetStatsRequest) (*GetStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStats not implemented")
+}
+func (UnimplementedNotifyServiceServer) StreamLogs(*StreamLogsRequest, grpc.ServerStreamingServer[LogLine]) error {
+	return status.Error(codes.Unimplemented, "method StreamLogs not implemented")
 }
 func (UnimplementedNotifyServiceServer) mustEmbedUnimplementedNotifyServiceServer() {}
 func (UnimplementedNotifyServiceServer) testEmbeddedByValue()                       {}
@@ -310,6 +335,17 @@ func _NotifyService_GetStats_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NotifyService_StreamLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamLogsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(NotifyServiceServer).StreamLogs(m, &grpc.GenericServerStream[StreamLogsRequest, LogLine]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type NotifyService_StreamLogsServer = grpc.ServerStreamingServer[LogLine]
+
 // NotifyService_ServiceDesc is the grpc.ServiceDesc for NotifyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -346,6 +382,11 @@ var NotifyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "StreamDeliveryStatus",
 			Handler:       _NotifyService_StreamDeliveryStatus_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "StreamLogs",
+			Handler:       _NotifyService_StreamLogs_Handler,
 			ServerStreams: true,
 		},
 	},

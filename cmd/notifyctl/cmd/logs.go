@@ -15,6 +15,7 @@ import (
 var (
 	logsServiceID string
 	showStats     bool
+	streamLogs    bool
 )
 
 var logsCmd = &cobra.Command{
@@ -29,6 +30,23 @@ var logsCmd = &cobra.Command{
 		serviceID := logsServiceID
 		if serviceID == "" {
 			serviceID = cfg.ServiceID
+		}
+
+		if streamLogs {
+			req := &notifyv1.StreamLogsRequest{}
+			stream, err := client.StreamLogs(ctx, req)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("Streaming server logs (JSON format)...")
+			for {
+				line, err := stream.Recv()
+				if err != nil {
+					return err
+				}
+				fmt.Println(line.Line)
+			}
 		}
 
 		if showStats {
@@ -101,4 +119,5 @@ func init() {
 	rootCmd.AddCommand(logsCmd)
 	logsCmd.Flags().StringVar(&logsServiceID, "service-id", "", "Filter by service ID")
 	logsCmd.Flags().BoolVar(&showStats, "stats", false, "Show aggregated notification statistics")
+	logsCmd.Flags().BoolVar(&streamLogs, "stream", false, "Stream real-time server logs")
 }
