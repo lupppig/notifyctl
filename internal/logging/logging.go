@@ -78,14 +78,21 @@ func (h *ConsoleHandler) Handle(_ context.Context, r slog.Record) error {
 	level := r.Level.String()
 	timestamp := r.Time.Format("2006:01:02:15:04:05")
 
-	// Extract "code" attribute and collect others
+	// Hide specific metadata from console view
 	var otherAttrs []string
+	skipKeys := map[string]bool{
+		"service_name": true,
+		"service_id":   true,
+		"request_id":   true,
+		"event_id":     true,
+		"topic":        true,
+	}
 
 	// Collect attributes from the record
 	r.Attrs(func(a slog.Attr) bool {
 		if a.Key == "code" {
 			code = a.Value.String()
-		} else {
+		} else if !skipKeys[a.Key] {
 			otherAttrs = append(otherAttrs, fmt.Sprintf("%s=%v", a.Key, a.Value.Any()))
 		}
 		return true
@@ -95,7 +102,7 @@ func (h *ConsoleHandler) Handle(_ context.Context, r slog.Record) error {
 	for _, a := range h.attrs {
 		if a.Key == "code" {
 			code = a.Value.String()
-		} else {
+		} else if !skipKeys[a.Key] {
 			otherAttrs = append(otherAttrs, fmt.Sprintf("%s=%v", a.Key, a.Value.Any()))
 		}
 	}
@@ -123,26 +130,33 @@ func (h *ConsoleHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 }
 
 func (h *ConsoleHandler) WithGroup(name string) slog.Handler {
-	// Grouping not supported in simplified console view
 	return h
 }
 
 // StreamingHandler sends JSON logs to the LogHub
 type StreamingHandler struct {
-	jsonHandler slog.Handler
-	hub         *LogHub
+	hub     *LogHub
+	options *slog.HandlerOptions
+	attrs   []slog.Attr
 }
 
-func (h *StreamingHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return h.jsonHandler.Enabled(ctx, level)
+func (h *StreamingHandler) Enabled(_ context.Context, level slog.Level) bool {
+	minLevel := slog.LevelInfo
+	if h.options != nil && h.options.Level != nil {
+		minLevel = h.options.Level.Level()
+	}
+	return level >= minLevel
 }
 
 func (h *StreamingHandler) Handle(ctx context.Context, r slog.Record) error {
 	var buf strings.Builder
-	h2 := slog.NewJSONHandler(&buf, &slog.HandlerOptions{
-		Level:       slog.LevelInfo,
-		ReplaceAttr: h.replaceAttr,
-	})
+	// We use CaseInsensitive comparison for keys in our verification,
+	// but here we just want to ensure all attributes are present in the JSON.
+	h2 := slog.NewJSONHandler(&buf, h.options)
+	if len(h.attrs) > 0 {
+		h2 = h2.WithAttrs(h.attrs).(*slog.JSONHandler)
+	}
+
 	if err := h2.Handle(ctx, r); err != nil {
 		return err
 	}
@@ -150,27 +164,16 @@ func (h *StreamingHandler) Handle(ctx context.Context, r slog.Record) error {
 	return nil
 }
 
-func (h *StreamingHandler) replaceAttr(groups []string, a slog.Attr) slog.Attr {
-	if a.Key == slog.TimeKey {
-		if t, ok := a.Value.Any().(time.Time); ok {
-			return slog.String(a.Key, t.Format("2006:01:02:15:04:05"))
-		}
-	}
-	return a
-}
-
 func (h *StreamingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &StreamingHandler{
-		jsonHandler: h.jsonHandler.WithAttrs(attrs),
-		hub:         h.hub,
+		hub:     h.hub,
+		options: h.options,
+		attrs:   append(h.attrs, attrs...),
 	}
 }
 
 func (h *StreamingHandler) WithGroup(name string) slog.Handler {
-	return &StreamingHandler{
-		jsonHandler: h.jsonHandler.WithGroup(name),
-		hub:         h.hub,
-	}
+	return h
 }
 
 func Init() {
@@ -189,10 +192,10 @@ func Init() {
 	// Stdout: Custom Console format
 	stdoutHandler := &ConsoleHandler{out: os.Stdout, options: opts}
 
-	// LogHub for Streaming
+	// LogHub for Streaming (JSON format)
 	hubHandler := &StreamingHandler{
-		jsonHandler: slog.NewJSONHandler(io.Discard, opts),
-		hub:         GetHub(),
+		hub:     GetHub(),
+		options: opts,
 	}
 
 	// File: JSON format

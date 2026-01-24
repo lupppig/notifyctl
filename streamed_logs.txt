@@ -1,0 +1,3 @@
+Streaming server logs (JSON format)...
+{"time":"2026:01:24:18:15:56","level":"INFO","msg":"registering service","service_id":"97474bfa-90fa-416f-ba2b-f2950fc16ba7","service_name":"VisibilityFinal-1769274950","code":"SYS_SVC_REG"}
+{"time":"2026:01:24:18:15:56","level":"INFO","msg":"service registered successfully","service_id":"97474bfa-90fa-416f-ba2b-f2950fc16ba7","service_name":"VisibilityFinal-1769274950","code":"SYS_SVC_CREATED"}
