@@ -134,10 +134,6 @@ func (m *SendModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *SendModel) View() string {
-	if m.quitting {
-		return ""
-	}
-
 	var s strings.Builder
 	s.WriteString(titleStyle.Render("NotifyCtl Send") + "\n\n")
 

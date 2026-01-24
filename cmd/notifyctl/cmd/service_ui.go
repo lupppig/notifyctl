@@ -37,9 +37,6 @@ func (m ListServicesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ListServicesModel) View() string {
-	if m.quitting {
-		return ""
-	}
 	if m.err != nil {
 		return errorStyle.Render(fmt.Sprintf("\n  Error: %v\n", m.err))
 	}
@@ -89,9 +86,6 @@ func (m ServiceStatusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ServiceStatusModel) View() string {
-	if m.quitting {
-		return ""
-	}
 	var s strings.Builder
 	if m.Err != nil {
 		s.WriteString(errorStyle.Render("FAILED") + " " + m.Title + "\n")

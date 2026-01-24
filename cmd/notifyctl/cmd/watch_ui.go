@@ -71,10 +71,6 @@ func (m *WatchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *WatchModel) View() string {
-	if m.quit {
-		return ""
-	}
-
 	var s strings.Builder
 
 	s.WriteString(titleStyle.Render("NotifyCtl Watch"))
@@ -130,7 +126,10 @@ func runWatchUI(ctx context.Context, stream notifyv1.NotifyService_StreamDeliver
 		}
 	}()
 
-	_, err := p.Run()
+	finalModel, err := p.Run()
+	if err == nil {
+		fmt.Println(finalModel.View())
+	}
 	return err
 }
 

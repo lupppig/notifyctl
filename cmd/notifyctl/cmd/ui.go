@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -16,6 +18,9 @@ func NewUI(model tea.Model) *UI {
 
 func (u *UI) Run(opts ...tea.ProgramOption) error {
 	p := tea.NewProgram(u.model, opts...)
-	_, err := p.Run()
+	finalModel, err := p.Run()
+	if err == nil {
+		fmt.Println(finalModel.View())
+	}
 	return err
 }
