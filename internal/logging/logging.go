@@ -2,8 +2,11 @@ package logging
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -55,8 +58,76 @@ func (m *MultiHandler) WithGroup(name string) slog.Handler {
 	return &MultiHandler{handlers: newHandlers}
 }
 
+// ConsoleHandler formats logs as [time] [LEVEL] message [code]
+type ConsoleHandler struct {
+	out     io.Writer
+	options *slog.HandlerOptions
+	attrs   []slog.Attr
+}
+
+func (h *ConsoleHandler) Enabled(_ context.Context, level slog.Level) bool {
+	minLevel := slog.LevelInfo
+	if h.options != nil && h.options.Level != nil {
+		minLevel = h.options.Level.Level()
+	}
+	return level >= minLevel
+}
+
+func (h *ConsoleHandler) Handle(_ context.Context, r slog.Record) error {
+	var code string
+	level := r.Level.String()
+	timestamp := r.Time.Format("2006:01:02:15:04:05")
+
+	// Extract "code" attribute and collect others
+	var otherAttrs []string
+
+	// Collect attributes from the record
+	r.Attrs(func(a slog.Attr) bool {
+		if a.Key == "code" {
+			code = a.Value.String()
+		} else {
+			otherAttrs = append(otherAttrs, fmt.Sprintf("%s=%v", a.Key, a.Value.Any()))
+		}
+		return true
+	})
+
+	// Add attributes from the handler (set via WithAttrs)
+	for _, a := range h.attrs {
+		if a.Key == "code" {
+			code = a.Value.String()
+		} else {
+			otherAttrs = append(otherAttrs, fmt.Sprintf("%s=%v", a.Key, a.Value.Any()))
+		}
+	}
+
+	// [time] [LEVEL] message [code]
+	line := fmt.Sprintf("[%s] [%s] %s", timestamp, level, r.Message)
+	if code != "" {
+		line += fmt.Sprintf(" [%s]", strings.ToLower(code))
+	}
+
+	if len(otherAttrs) > 0 {
+		line += " | " + strings.Join(otherAttrs, " ")
+	}
+
+	fmt.Fprintln(h.out, line)
+	return nil
+}
+
+func (h *ConsoleHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &ConsoleHandler{
+		out:     h.out,
+		options: h.options,
+		attrs:   append(h.attrs, attrs...),
+	}
+}
+
+func (h *ConsoleHandler) WithGroup(name string) slog.Handler {
+	// Grouping not supported in simplified console view
+	return h
+}
+
 func Init() {
-	// Custom time format: yyyy:mm:dd:HH:MM:SS -> 2006:01:02:15:04:05
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
@@ -69,8 +140,8 @@ func Init() {
 		},
 	}
 
-	// Stdout: Text format
-	stdoutHandler := slog.NewTextHandler(os.Stdout, opts)
+	// Stdout: Custom Console format
+	stdoutHandler := &ConsoleHandler{out: os.Stdout, options: opts}
 
 	// File: JSON format
 	logFile, err := os.OpenFile("notifyctl.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
