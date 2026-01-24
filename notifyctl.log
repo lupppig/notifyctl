@@ -1,0 +1,6 @@
+{"time":"2026:01:24:10:06:56","level":"INFO","msg":"worker starting and subscribing to notifications.jobs","code":"SYS_STARTUP"}
+{"time":"2026:01:24:10:06:56","level":"INFO","msg":"worker ready","code":"SYS_READY"}
+{"time":"2026:01:24:10:06:56","level":"INFO","msg":"background retry scheduler started","code":"SYS_STARTUP","maxRetries":5,"pollInterval":5000000000}
+{"time":"2026:01:24:10:06:56","level":"INFO","msg":"gRPC server listening on :50051"}
+{"time":"2026:01:24:10:06:59","level":"INFO","msg":"registering service","service_id":"230f1e0b-8ccf-461d-ab82-8a85a6237779","service_name":"LoggingRefined","code":"SYS_SVC_REG"}
+{"time":"2026:01:24:10:06:59","level":"INFO","msg":"service registered successfully","service_id":"230f1e0b-8ccf-461d-ab82-8a85a6237779","service_name":"LoggingRefined","code":"SYS_SVC_CREATED"}

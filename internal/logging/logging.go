@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"time"
 )
 
 type contextKey string
@@ -15,11 +16,75 @@ const (
 	ServiceNameKey contextKey = "service_name"
 )
 
+// MultiHandler sends log records to multiple handlers.
+type MultiHandler struct {
+	handlers []slog.Handler
+}
+
+func (m *MultiHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	for _, h := range m.handlers {
+		if h.Enabled(ctx, level) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *MultiHandler) Handle(ctx context.Context, r slog.Record) error {
+	for _, h := range m.handlers {
+		if err := h.Handle(ctx, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *MultiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	newHandlers := make([]slog.Handler, len(m.handlers))
+	for i, h := range m.handlers {
+		newHandlers[i] = h.WithAttrs(attrs)
+	}
+	return &MultiHandler{handlers: newHandlers}
+}
+
+func (m *MultiHandler) WithGroup(name string) slog.Handler {
+	newHandlers := make([]slog.Handler, len(m.handlers))
+	for i, h := range m.handlers {
+		newHandlers[i] = h.WithGroup(name)
+	}
+	return &MultiHandler{handlers: newHandlers}
+}
+
 func Init() {
-	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	// Custom time format: yyyy:mm:dd:HH:MM:SS -> 2006:01:02:15:04:05
+	opts := &slog.HandlerOptions{
 		Level: slog.LevelInfo,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				if t, ok := a.Value.Any().(time.Time); ok {
+					return slog.String(a.Key, t.Format("2006:01:02:15:04:05"))
+				}
+			}
+			return a
+		},
+	}
+
+	// Stdout: Text format
+	stdoutHandler := slog.NewTextHandler(os.Stdout, opts)
+
+	// File: JSON format
+	logFile, err := os.OpenFile("notifyctl.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		slog.Error("failed to open log file", slog.Any("error", err))
+		slog.SetDefault(slog.New(stdoutHandler))
+		return
+	}
+
+	jsonHandler := slog.NewJSONHandler(logFile, opts)
+
+	logger := slog.New(&MultiHandler{
+		handlers: []slog.Handler{stdoutHandler, jsonHandler},
 	})
-	logger := slog.New(handler)
 	slog.SetDefault(logger)
 }
 
