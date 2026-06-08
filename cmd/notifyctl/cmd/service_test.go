@@ -21,6 +21,9 @@ type mockNotifyClient struct {
 	deleteFunc   func(ctx context.Context, in *notifyv1.DeleteServiceRequest) (*notifyv1.DeleteServiceResponse, error)
 	sendFunc     func(ctx context.Context, in *notifyv1.SendNotificationRequest) (*notifyv1.SendNotificationResponse, error)
 	streamFunc   func(ctx context.Context, in *notifyv1.StreamDeliveryStatusRequest) (notifyv1.NotifyService_StreamDeliveryStatusClient, error)
+
+	listDeadLettersFunc  func(ctx context.Context, in *notifyv1.ListDeadLettersRequest) (*notifyv1.ListDeadLettersResponse, error)
+	replayDeadLetterFunc func(ctx context.Context, in *notifyv1.ReplayDeadLetterRequest) (*notifyv1.ReplayDeadLetterResponse, error)
 }
 
 func (m *mockNotifyClient) RegisterService(ctx context.Context, in *notifyv1.RegisterServiceRequest, opts ...grpc.CallOption) (*notifyv1.RegisterServiceResponse, error) {

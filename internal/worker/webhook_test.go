@@ -16,6 +16,7 @@ import (
 	"github.com/lupppig/notifyctl/internal/domain"
 	"github.com/lupppig/notifyctl/internal/httpclient"
 	"github.com/lupppig/notifyctl/internal/retry"
+	"github.com/lupppig/notifyctl/internal/store"
 )
 
 // mockNotificationStore implements store.NotificationStore for testing
@@ -67,6 +68,69 @@ func (s *mockDeliveryAttemptStore) GetAll() []*domain.DeliveryAttempt {
 	defer s.mu.Unlock()
 	result := make([]*domain.DeliveryAttempt, len(s.attempts))
 	copy(result, s.attempts)
+	return result
+}
+
+// mockDeadLetterStore implements store.DeadLetterStore for testing
+type mockDeadLetterStore struct {
+	letters []*domain.DeadLetter
+	mu      sync.Mutex
+}
+
+func newMockDeadLetterStore() *mockDeadLetterStore {
+	return &mockDeadLetterStore{
+		letters: make([]*domain.DeadLetter, 0),
+	}
+}
+
+func (s *mockDeadLetterStore) Create(ctx context.Context, dl *domain.DeadLetter) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.letters = append(s.letters, dl)
+	return nil
+}
+
+func (s *mockDeadLetterStore) List(ctx context.Context, serviceID string) ([]*domain.DeadLetter, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	result := make([]*domain.DeadLetter, 0, len(s.letters))
+	for _, dl := range s.letters {
+		if serviceID == "" || dl.ServiceID == serviceID {
+			result = append(result, dl)
+		}
+	}
+	return result, nil
+}
+
+func (s *mockDeadLetterStore) GetByID(ctx context.Context, id string) (*domain.DeadLetter, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, dl := range s.letters {
+		if dl.ID == id {
+			return dl, nil
+		}
+	}
+	return nil, store.ErrNotFound
+}
+
+func (s *mockDeadLetterStore) DeleteByNotificationID(ctx context.Context, notificationID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.letters[:0]
+	for _, dl := range s.letters {
+		if dl.NotificationID != notificationID {
+			kept = append(kept, dl)
+		}
+	}
+	s.letters = kept
+	return nil
+}
+
+func (s *mockDeadLetterStore) GetAll() []*domain.DeadLetter {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	result := make([]*domain.DeadLetter, len(s.letters))
+	copy(result, s.letters)
 	return result
 }
 
@@ -488,6 +552,87 @@ func TestDLQOnMaxAttempts(t *testing.T) {
 	dlqMessages := publisher.GetDLQMessages()
 	if len(dlqMessages) != 1 {
 		t.Errorf("expected 1 DLQ message, got %d", len(dlqMessages))
+	}
+}
+
+// TestMoveToDLQPersists verifies that deliveries failing after max retries are
+// persisted to the dead-letter store (in addition to the NATS DLQ stream).
+func TestMoveToDLQPersists(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	notificationStore := newMockNotificationStore()
+	attemptStore := newMockDeliveryAttemptStore()
+	deadLetterStore := newMockDeadLetterStore()
+	httpClient := httpclient.New(5 * time.Second)
+	publisher := newMockPublisher()
+
+	cfg := retry.Config{
+		MaxAttempts:       3,
+		InitialBackoff:    10 * time.Millisecond,
+		MaxBackoff:        100 * time.Millisecond,
+		BackoffMultiplier: 2.0,
+		JitterFactor:      0,
+	}
+	scheduler := retry.NewScheduler(cfg)
+
+	notification := &domain.Notification{
+		ID:        "test-notification-dlq-persist",
+		ServiceID: "svc-persist",
+		Topic:     "test.topic",
+		Payload:   []byte(`{"test": "data"}`),
+		Destinations: []domain.Destination{
+			{Type: domain.DestinationTypeWebhook, Target: server.URL},
+		},
+		CreatedAt: time.Now(),
+	}
+	notificationStore.Create(context.Background(), notification)
+
+	worker := &WebhookWorker{
+		notifications:  notificationStore,
+		attempts:       attemptStore,
+		deadLetters:    deadLetterStore,
+		httpClient:     httpClient,
+		publisher:      publisher,
+		retryScheduler: scheduler,
+	}
+
+	// AttemptCount at MaxAttempts so the next failure exhausts retries → DLQ.
+	msgData, _ := json.Marshal(notificationMessage{NotificationID: notification.ID, AttemptCount: 3})
+	msg := &mockMessage{data: msgData}
+
+	worker.processMessage(context.Background(), msg)
+
+	letters := deadLetterStore.GetAll()
+	if len(letters) != 1 {
+		t.Fatalf("expected 1 persisted dead letter, got %d", len(letters))
+	}
+
+	dl := letters[0]
+	if dl.NotificationID != notification.ID {
+		t.Errorf("expected notification ID %q, got %q", notification.ID, dl.NotificationID)
+	}
+	if dl.ServiceID != notification.ServiceID {
+		t.Errorf("expected service ID %q, got %q", notification.ServiceID, dl.ServiceID)
+	}
+	if dl.AttemptCount != 4 { // incremented to 4 before the DLQ decision
+		t.Errorf("expected attempt count 4, got %d", dl.AttemptCount)
+	}
+	if dl.LastError == "" {
+		t.Error("expected a non-empty last error")
+	}
+	if len(dl.Payload) == 0 {
+		t.Error("expected payload to be persisted")
+	}
+	if dl.ID == "" {
+		t.Error("expected a generated dead letter ID")
+	}
+
+	// The existing NATS DLQ publish must still happen.
+	if got := len(publisher.GetDLQMessages()); got != 1 {
+		t.Errorf("expected 1 NATS DLQ message, got %d", got)
 	}
 }
 
