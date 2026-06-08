@@ -189,16 +189,13 @@ func Init() {
 		},
 	}
 
-	// Stdout: Custom Console format
 	stdoutHandler := &ConsoleHandler{out: os.Stdout, options: opts}
 
-	// LogHub for Streaming (JSON format)
 	hubHandler := &StreamingHandler{
 		hub:     GetHub(),
 		options: opts,
 	}
 
-	// File: JSON format
 	logFile, err := os.OpenFile("notifyctl.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		slog.Error("failed to open log file", slog.Any("error", err))
