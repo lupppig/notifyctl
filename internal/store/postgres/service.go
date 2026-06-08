@@ -46,6 +46,7 @@ func (s *ServiceStore) List(ctx context.Context) ([]*domain.Service, error) {
 	query := `
 		SELECT id, name, webhook_url, secret, api_key, created_at
 		FROM services
+		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
 	`
 
@@ -79,7 +80,7 @@ func (s *ServiceStore) GetByAPIKeyHash(ctx context.Context, hash string) (*domai
 	query := `
 		SELECT id, name, webhook_url, secret, api_key, created_at
 		FROM services
-		WHERE api_key = $1
+		WHERE api_key = $1 AND deleted_at IS NULL
 	`
 	var svc domain.Service
 	err := s.db.Pool.QueryRow(ctx, query, hash).Scan(
@@ -97,10 +98,15 @@ func (s *ServiceStore) GetByAPIKeyHash(ctx context.Context, hash string) (*domai
 }
 
 func (s *ServiceStore) Delete(ctx context.Context, id string) error {
-	query := `DELETE FROM services WHERE id = $1`
-	_, err := s.db.Pool.Exec(ctx, query, id)
+	// Soft delete: mark the row deleted rather than removing it, preserving its
+	// notifications/jobs/stats/dead-letters and keeping foreign keys valid.
+	query := `UPDATE services SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
+	tag, err := s.db.Pool.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("delete service %s: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("%w: service %s", store.ErrNotFound, id)
 	}
 	return nil
 }

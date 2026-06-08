@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrAlreadyExists = errors.New("already exists")
+	ErrNotFound      = errors.New("not found")
 )
 
 type ServiceStore interface {
@@ -33,8 +34,18 @@ type NotificationJobStore interface {
 	List(ctx context.Context, serviceID string) ([]*domain.NotificationJob, error)
 	IncrementStats(ctx context.Context, serviceID, status string, t time.Time) error
 	GetStats(ctx context.Context, serviceID string) (map[string]int64, error)
+	// ResetForReplay upserts the job back to PENDING with a fresh retry
+	// budget so a replayed dead letter re-enters the dispatch pipeline.
+	ResetForReplay(ctx context.Context, job *domain.NotificationJob) error
 }
 
 type DeliveryAttemptStore interface {
 	Create(ctx context.Context, attempt *domain.DeliveryAttempt) error
+}
+
+type DeadLetterStore interface {
+	Create(ctx context.Context, dl *domain.DeadLetter) error
+	List(ctx context.Context, serviceID string) ([]*domain.DeadLetter, error)
+	GetByID(ctx context.Context, id string) (*domain.DeadLetter, error)
+	DeleteByNotificationID(ctx context.Context, notificationID string) error
 }

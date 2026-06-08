@@ -88,6 +88,33 @@ func (s *NotificationJobStore) FailJob(ctx context.Context, requestID string, ne
 	return nil
 }
 
+// ResetForReplay upserts the job back to PENDING with a fresh retry budget so
+// a replayed dead letter re-enters the dispatch pipeline.
+func (s *NotificationJobStore) ResetForReplay(ctx context.Context, job *domain.NotificationJob) error {
+	query := `
+		INSERT INTO notification_jobs (request_id, service_id, payload, status, retry_count, next_retry_at, created_at, updated_at)
+		VALUES ($1, $2, $3, 'PENDING', 0, NULL, $4, $5)
+		ON CONFLICT (request_id) DO UPDATE
+		SET status = 'PENDING', retry_count = 0, next_retry_at = NULL, updated_at = $5
+	`
+	now := time.Now()
+	createdAt := job.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = now
+	}
+	_, err := s.db.Pool.Exec(ctx, query,
+		job.RequestID,
+		job.ServiceID,
+		job.Payload,
+		createdAt,
+		now,
+	)
+	if err != nil {
+		return fmt.Errorf("reset notification job for replay: %w", err)
+	}
+	return nil
+}
+
 func (s *NotificationJobStore) GetRetryableJobs(ctx context.Context, limit int) ([]*domain.NotificationJob, error) {
 	query := `
 		SELECT request_id, service_id, payload, status, retry_count, next_retry_at, created_at, updated_at

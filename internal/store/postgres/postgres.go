@@ -36,7 +36,8 @@ func (db *DB) Migrate(ctx context.Context) error {
 			webhook_url TEXT NOT NULL,
 			secret      TEXT NOT NULL,
 			api_key     TEXT UNIQUE NOT NULL,
-			created_at  TIMESTAMPTZ DEFAULT NOW()
+			created_at  TIMESTAMPTZ DEFAULT NOW(),
+			deleted_at  TIMESTAMPTZ
 		);
 
 		CREATE TABLE IF NOT EXISTS notifications (
@@ -63,7 +64,7 @@ func (db *DB) Migrate(ctx context.Context) error {
 			request_id    TEXT PRIMARY KEY,
 			service_id    TEXT REFERENCES services(id),
 			payload       JSONB NOT NULL,
-			status        TEXT NOT NULL CHECK (status IN ('ACCEPTED', 'PENDING', 'DISPATCHED', 'DELIVERED', 'FAILED')),
+			status        TEXT NOT NULL CHECK (status IN ('ACCEPTED', 'PENDING', 'DISPATCHED', 'DELIVERED', 'FAILED', 'DEAD_LETTERED')),
 			retry_count   INT DEFAULT 0,
 			next_retry_at TIMESTAMPTZ,
 			created_at    TIMESTAMPTZ DEFAULT NOW(),
@@ -83,11 +84,54 @@ func (db *DB) Migrate(ctx context.Context) error {
 			count       BIGINT DEFAULT 0,
 			PRIMARY KEY (service_id, status, hour_bucket)
 		);
+
+		CREATE TABLE IF NOT EXISTS dead_letters (
+			id              TEXT PRIMARY KEY,
+			notification_id TEXT NOT NULL,
+			service_id      TEXT REFERENCES services(id),
+			payload         BYTEA NOT NULL,
+			last_error      TEXT,
+			attempt_count   INT NOT NULL DEFAULT 0,
+			failed_at       TIMESTAMPTZ DEFAULT NOW()
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_dead_letters_service_id ON dead_letters(service_id);
+		CREATE INDEX IF NOT EXISTS idx_dead_letters_failed_at ON dead_letters(failed_at);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_dead_letters_notification_id ON dead_letters(notification_id);
 	`
 
 	_, err := db.Pool.Exec(ctx, schema)
 	if err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	// CREATE TABLE IF NOT EXISTS never re-evaluates the status CHECK on
+	// existing databases, so re-create the constraint to allow DEAD_LETTERED.
+	constraint := `
+		ALTER TABLE notification_jobs DROP CONSTRAINT IF EXISTS notification_jobs_status_check;
+		ALTER TABLE notification_jobs ADD CONSTRAINT notification_jobs_status_check
+			CHECK (status IN ('ACCEPTED', 'PENDING', 'DISPATCHED', 'DELIVERED', 'FAILED', 'DEAD_LETTERED'));
+	`
+	if _, err := db.Pool.Exec(ctx, constraint); err != nil {
+		return fmt.Errorf("failed to migrate status check constraint: %w", err)
+	}
+
+	// Soft-delete support for services. CREATE TABLE IF NOT EXISTS never adds the
+	// column or swaps constraints on an existing database, so apply them here.
+	// The full-column UNIQUE(name)/UNIQUE(api_key) constraints are replaced with
+	// partial unique indexes scoped to live rows, so a soft-deleted service frees
+	// its name and api_key for reuse.
+	softDelete := `
+		ALTER TABLE services ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+		ALTER TABLE services DROP CONSTRAINT IF EXISTS services_name_key;
+		ALTER TABLE services DROP CONSTRAINT IF EXISTS services_api_key_key;
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_services_name_live
+			ON services(name)    WHERE deleted_at IS NULL;
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_services_api_key_live
+			ON services(api_key) WHERE deleted_at IS NULL;
+	`
+	if _, err := db.Pool.Exec(ctx, softDelete); err != nil {
+		return fmt.Errorf("failed to migrate services soft-delete: %w", err)
 	}
 
 	return nil
