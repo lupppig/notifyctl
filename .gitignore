@@ -31,3 +31,7 @@ go.work.sum
 # .idea/
 # .vscode/
 bin/
+
+# Runtime output artifacts
+*.log
+server_out.txt
