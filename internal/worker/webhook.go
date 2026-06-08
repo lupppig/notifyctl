@@ -21,6 +21,7 @@ import (
 type WebhookWorker struct {
 	notifications  store.NotificationStore
 	attempts       store.DeliveryAttemptStore
+	deadLetters    store.DeadLetterStore
 	httpClient     *httpclient.Client
 	consumer       jetstream.Consumer
 	publisher      broker.Publisher
@@ -36,6 +37,7 @@ type notificationMessage struct {
 func NewWebhookWorker(
 	notifications store.NotificationStore,
 	attempts store.DeliveryAttemptStore,
+	deadLetters store.DeadLetterStore,
 	httpClient *httpclient.Client,
 	consumer jetstream.Consumer,
 	publisher broker.Publisher,
@@ -45,6 +47,7 @@ func NewWebhookWorker(
 	return &WebhookWorker{
 		notifications:  notifications,
 		attempts:       attempts,
+		deadLetters:    deadLetters,
 		httpClient:     httpClient,
 		consumer:       consumer,
 		publisher:      publisher,
@@ -88,10 +91,12 @@ func (w *WebhookWorker) processMessage(ctx context.Context, msg jetstream.Msg) {
 	}
 
 	failedDests := 0
+	lastErr := ""
 	for _, dest := range notification.Destinations {
 		if dest.Type == domain.DestinationTypeWebhook {
-			if !w.deliverWebhook(ctx, notification, dest, nm.AttemptCount) {
+			if ok, errMsg := w.deliverWebhook(ctx, notification, dest, nm.AttemptCount); !ok {
 				failedDests++
+				lastErr = errMsg
 			}
 		}
 	}
@@ -107,12 +112,12 @@ func (w *WebhookWorker) processMessage(ctx context.Context, msg jetstream.Msg) {
 		w.emitEvent(notification, "", events.DeliveryStatusRetrying, "Retrying", nm.AttemptCount)
 		msg.NakWithDelay(delay)
 	} else {
-		w.moveToDLQ(ctx, nm)
+		w.moveToDLQ(ctx, notification, nm, lastErr)
 		msg.Ack()
 	}
 }
 
-func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notification, dest domain.Destination, attemptCount int) bool {
+func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notification, dest domain.Destination, attemptCount int) (bool, string) {
 	attempt := &domain.DeliveryAttempt{
 		ID:             uuid.New().String(),
 		NotificationID: n.ID,
@@ -134,7 +139,7 @@ func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notificati
 	if err != nil {
 		attempt.Error = err.Error()
 		w.emitEvent(n, dest.Target, events.DeliveryStatusFailed, err.Error(), attemptCount)
-		return false
+		return false, err.Error()
 	}
 
 	attempt.StatusCode = resp.StatusCode
@@ -143,15 +148,32 @@ func (w *WebhookWorker) deliverWebhook(ctx context.Context, n *domain.Notificati
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		attempt.Status = domain.DeliveryStatusSuccess
 		w.emitEvent(n, dest.Target, events.DeliveryStatusDelivered, "OK", attemptCount)
-		return true
+		return true, ""
 	}
 
-	w.emitEvent(n, dest.Target, events.DeliveryStatusFailed, fmt.Sprintf("HTTP %d", resp.StatusCode), attemptCount)
-	return false
+	reason := fmt.Sprintf("HTTP %d", resp.StatusCode)
+	w.emitEvent(n, dest.Target, events.DeliveryStatusFailed, reason, attemptCount)
+	return false, reason
 }
 
-func (w *WebhookWorker) moveToDLQ(ctx context.Context, nm notificationMessage) {
+func (w *WebhookWorker) moveToDLQ(ctx context.Context, n *domain.Notification, nm notificationMessage, lastErr string) {
 	log.Printf("moving notification %s to DLQ", nm.NotificationID)
+
+	if w.deadLetters != nil {
+		dl := &domain.DeadLetter{
+			ID:             uuid.New().String(),
+			NotificationID: nm.NotificationID,
+			ServiceID:      n.ServiceID,
+			Payload:        n.Payload,
+			LastError:      lastErr,
+			AttemptCount:   nm.AttemptCount,
+			FailedAt:       time.Now(),
+		}
+		if err := w.deadLetters.Create(ctx, dl); err != nil {
+			log.Printf("failed to persist dead letter: %v", err)
+		}
+	}
+
 	data, _ := json.Marshal(nm)
 	if err := w.publisher.PublishToDLQ(ctx, data); err != nil {
 		log.Printf("failed to publish to DLQ: %v", err)
