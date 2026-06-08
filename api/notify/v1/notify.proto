@@ -12,6 +12,8 @@ service NotifyService {
   rpc StreamDeliveryStatus(StreamDeliveryStatusRequest) returns (stream DeliveryStatusEvent);
   rpc ListNotificationJobs(ListNotificationJobsRequest) returns (ListNotificationJobsResponse);
   rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+  rpc ListDeadLetters(ListDeadLettersRequest) returns (ListDeadLettersResponse);
+  rpc ReplayDeadLetter(ReplayDeadLetterRequest) returns (ReplayDeadLetterResponse);
   rpc StreamLogs(StreamLogsRequest) returns (stream LogLine);
 }
 
@@ -130,6 +132,35 @@ message GetStatsResponse {
 message StatEntry {
   string status = 1;
   int64 count = 2;
+}
+
+// ListDeadLetters messages
+
+message ListDeadLettersRequest {
+  string service_id = 1;
+}
+
+message ListDeadLettersResponse {
+  repeated DeadLetter dead_letters = 1;
+}
+
+message DeadLetter {
+  string id = 1;
+  string notification_id = 2;
+  string service_id = 3;
+  string last_error = 4;
+  int32 attempt_count = 5;
+  string failed_at = 6; // RFC3339
+}
+
+// ReplayDeadLetter messages
+
+message ReplayDeadLetterRequest {
+  string id = 1; // dead-letter ID
+}
+
+message ReplayDeadLetterResponse {
+  string notification_id = 1; // the re-enqueued notification/request ID
 }
 
 // StreamLogs messages

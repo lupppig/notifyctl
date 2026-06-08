@@ -21,20 +21,28 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type NotifyServer struct {
-	notifyv1.UnimplementedNotifyServiceServer
-	eventHub     *events.Hub
-	serviceStore store.ServiceStore
-	jobStore     store.NotificationJobStore
-	nc           *nats.Conn
+// jobPublisher is the subset of *nats.Conn the server needs; an interface so
+// handlers can be tested without a broker connection.
+type jobPublisher interface {
+	Publish(subj string, data []byte) error
 }
 
-func NewNotifyServer(eventHub *events.Hub, serviceStore store.ServiceStore, jobStore store.NotificationJobStore, nc *nats.Conn) *NotifyServer {
+type NotifyServer struct {
+	notifyv1.UnimplementedNotifyServiceServer
+	eventHub        *events.Hub
+	serviceStore    store.ServiceStore
+	jobStore        store.NotificationJobStore
+	deadLetterStore store.DeadLetterStore
+	nc              jobPublisher
+}
+
+func NewNotifyServer(eventHub *events.Hub, serviceStore store.ServiceStore, jobStore store.NotificationJobStore, deadLetterStore store.DeadLetterStore, nc *nats.Conn) *NotifyServer {
 	return &NotifyServer{
-		eventHub:     eventHub,
-		serviceStore: serviceStore,
-		jobStore:     jobStore,
-		nc:           nc,
+		eventHub:        eventHub,
+		serviceStore:    serviceStore,
+		jobStore:        jobStore,
+		deadLetterStore: deadLetterStore,
+		nc:              nc,
 	}
 }
 
@@ -192,6 +200,9 @@ func (s *NotifyServer) DeleteService(ctx context.Context, req *notifyv1.DeleteSe
 	}
 
 	if err := s.serviceStore.Delete(ctx, req.Id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, "service %s not found", req.Id)
+		}
 		return nil, status.Errorf(codes.Internal, "delete service: %v", err)
 	}
 
@@ -249,6 +260,112 @@ func (s *NotifyServer) GetStats(ctx context.Context, req *notifyv1.GetStatsReque
 	return &notifyv1.GetStatsResponse{
 		Stats: entries,
 	}, nil
+}
+
+func (s *NotifyServer) ListDeadLetters(ctx context.Context, req *notifyv1.ListDeadLettersRequest) (*notifyv1.ListDeadLettersResponse, error) {
+	// The auth interceptor injects the service resolved from the API key;
+	// results are always scoped to it so callers can't read other services'
+	// dead letters.
+	svc, ok := ctx.Value("service").(*domain.Service)
+	if !ok || svc == nil {
+		return nil, status.Error(codes.Internal, "service identity missing from context")
+	}
+	if req.ServiceId != "" && req.ServiceId != svc.ID {
+		return nil, status.Error(codes.PermissionDenied, "cannot list dead letters for another service")
+	}
+
+	letters, err := s.deadLetterStore.List(ctx, svc.ID)
+	if err != nil {
+		logging.FromContext(ctx).Error("failed to list dead letters", slog.String("code", "DB_ERROR"), slog.Any("error", err))
+		return nil, status.Errorf(codes.Internal, "list dead letters: %v", err)
+	}
+
+	var protoLetters []*notifyv1.DeadLetter
+	for _, dl := range letters {
+		protoLetters = append(protoLetters, &notifyv1.DeadLetter{
+			Id:             dl.ID,
+			NotificationId: dl.NotificationID,
+			ServiceId:      dl.ServiceID,
+			LastError:      dl.LastError,
+			AttemptCount:   int32(dl.AttemptCount),
+			FailedAt:       dl.FailedAt.Format(time.RFC3339),
+		})
+	}
+
+	log.Printf("[%s] SUCCESS: Listed %d dead letters", time.Now().Format(time.RFC3339), len(protoLetters))
+	return &notifyv1.ListDeadLettersResponse{DeadLetters: protoLetters}, nil
+}
+
+func (s *NotifyServer) ReplayDeadLetter(ctx context.Context, req *notifyv1.ReplayDeadLetterRequest) (*notifyv1.ReplayDeadLetterResponse, error) {
+	if req.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id required")
+	}
+
+	// Scope to the caller's service (same model as ListDeadLetters).
+	svc, ok := ctx.Value("service").(*domain.Service)
+	if !ok || svc == nil {
+		return nil, status.Error(codes.Internal, "service identity missing from context")
+	}
+
+	dl, err := s.deadLetterStore.GetByID(ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, "dead letter %q not found", req.Id)
+		}
+		logging.FromContext(ctx).Error("failed to load dead letter", slog.String("code", "DB_ERROR"), slog.Any("error", err))
+		return nil, status.Errorf(codes.Internal, "load dead letter: %v", err)
+	}
+	if dl.ServiceID != svc.ID {
+		return nil, status.Error(codes.PermissionDenied, "cannot replay another service's dead letter")
+	}
+
+	ctx = logging.WithEventID(ctx, dl.NotificationID)
+	ctx = logging.WithService(ctx, svc.ID, svc.Name)
+	l := logging.FromContext(ctx)
+
+	// Re-enter the dispatcher under the ORIGINAL notification ID: reset the
+	// job row (upsert to PENDING with a fresh retry budget), publish it, then
+	// remove the dead-letter record so a second failure can re-dead-letter
+	// cleanly. The DLQ delete is last: a crash before it leaves the dead
+	// letter intact and the whole replay is safely repeatable (the reset is
+	// an upsert; dead-lettering is keyed by notification ID).
+	job := &domain.NotificationJob{
+		RequestID:  dl.NotificationID,
+		ServiceID:  dl.ServiceID,
+		Payload:    dl.Payload,
+		Status:     "PENDING",
+		RetryCount: 0,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	data, err := json.Marshal(job)
+	if err != nil {
+		l.Error("failed to marshal job for replay", slog.String("code", "SYS_ERR"), slog.Any("error", err))
+		return nil, status.Errorf(codes.Internal, "marshal job: %v", err)
+	}
+
+	if err := s.jobStore.ResetForReplay(ctx, job); err != nil {
+		l.Error("failed to reset job for replay", slog.String("code", "DB_ERROR"), slog.Any("error", err))
+		return nil, status.Errorf(codes.Internal, "reset job: %v", err)
+	}
+
+	if err := s.nc.Publish("notifications.jobs", data); err != nil {
+		l.Error("failed to publish replay to NATS", slog.String("code", "BROKER_ERROR"), slog.Any("error", err))
+		return nil, status.Errorf(codes.Internal, "publish to nats: %v", err)
+	}
+
+	if err := s.deadLetterStore.DeleteByNotificationID(ctx, dl.NotificationID); err != nil {
+		l.Error("failed to delete dead letter on replay", slog.String("code", "DB_ERROR"), slog.Any("error", err))
+		return nil, status.Errorf(codes.Internal, "delete dead letter: %v", err)
+	}
+
+	if err := s.jobStore.IncrementStats(ctx, svc.ID, "ACCEPTED", time.Now()); err != nil {
+		l.Warn("failed to increment stats on replay", slog.String("code", "DB_ERROR"), slog.Any("error", err))
+	}
+
+	l.Info("dead letter replayed and re-enqueued", slog.String("code", "DLQ_REPLAYED"))
+	return &notifyv1.ReplayDeadLetterResponse{NotificationId: dl.NotificationID}, nil
 }
 
 func (s *NotifyServer) StreamLogs(req *notifyv1.StreamLogsRequest, stream notifyv1.NotifyService_StreamLogsServer) error {

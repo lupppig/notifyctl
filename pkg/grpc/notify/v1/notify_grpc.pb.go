@@ -26,6 +26,8 @@ const (
 	NotifyService_StreamDeliveryStatus_FullMethodName = "/notify.v1.NotifyService/StreamDeliveryStatus"
 	NotifyService_ListNotificationJobs_FullMethodName = "/notify.v1.NotifyService/ListNotificationJobs"
 	NotifyService_GetStats_FullMethodName             = "/notify.v1.NotifyService/GetStats"
+	NotifyService_ListDeadLetters_FullMethodName      = "/notify.v1.NotifyService/ListDeadLetters"
+	NotifyService_ReplayDeadLetter_FullMethodName     = "/notify.v1.NotifyService/ReplayDeadLetter"
 	NotifyService_StreamLogs_FullMethodName           = "/notify.v1.NotifyService/StreamLogs"
 )
 
@@ -40,6 +42,8 @@ type NotifyServiceClient interface {
 	StreamDeliveryStatus(ctx context.Context, in *StreamDeliveryStatusRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DeliveryStatusEvent], error)
 	ListNotificationJobs(ctx context.Context, in *ListNotificationJobsRequest, opts ...grpc.CallOption) (*ListNotificationJobsResponse, error)
 	GetStats(ctx context.Context, in *GetStatsRequest, opts ...grpc.CallOption) (*GetStatsResponse, error)
+	ListDeadLetters(ctx context.Context, in *ListDeadLettersRequest, opts ...grpc.CallOption) (*ListDeadLettersResponse, error)
+	ReplayDeadLetter(ctx context.Context, in *ReplayDeadLetterRequest, opts ...grpc.CallOption) (*ReplayDeadLetterResponse, error)
 	StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogLine], error)
 }
 
@@ -130,6 +134,26 @@ func (c *notifyServiceClient) GetStats(ctx context.Context, in *GetStatsRequest,
 	return out, nil
 }
 
+func (c *notifyServiceClient) ListDeadLetters(ctx context.Context, in *ListDeadLettersRequest, opts ...grpc.CallOption) (*ListDeadLettersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListDeadLettersResponse)
+	err := c.cc.Invoke(ctx, NotifyService_ListDeadLetters_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *notifyServiceClient) ReplayDeadLetter(ctx context.Context, in *ReplayDeadLetterRequest, opts ...grpc.CallOption) (*ReplayDeadLetterResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReplayDeadLetterResponse)
+	err := c.cc.Invoke(ctx, NotifyService_ReplayDeadLetter_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *notifyServiceClient) StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogLine], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &NotifyService_ServiceDesc.Streams[1], NotifyService_StreamLogs_FullMethodName, cOpts...)
@@ -160,6 +184,8 @@ type NotifyServiceServer interface {
 	StreamDeliveryStatus(*StreamDeliveryStatusRequest, grpc.ServerStreamingServer[DeliveryStatusEvent]) error
 	ListNotificationJobs(context.Context, *ListNotificationJobsRequest) (*ListNotificationJobsResponse, error)
 	GetStats(context.Context, *GetStatsRequest) (*GetStatsResponse, error)
+	ListDeadLetters(context.Context, *ListDeadLettersRequest) (*ListDeadLettersResponse, error)
+	ReplayDeadLetter(context.Context, *ReplayDeadLetterRequest) (*ReplayDeadLetterResponse, error)
 	StreamLogs(*StreamLogsRequest, grpc.ServerStreamingServer[LogLine]) error
 	mustEmbedUnimplementedNotifyServiceServer()
 }
@@ -191,6 +217,12 @@ func (UnimplementedNotifyServiceServer) ListNotificationJobs(context.Context, *L
 }
 func (UnimplementedNotifyServiceServer) GetStats(context.Context, *GetStatsRequest) (*GetStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStats not implemented")
+}
+func (UnimplementedNotifyServiceServer) ListDeadLetters(context.Context, *ListDeadLettersRequest) (*ListDeadLettersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListDeadLetters not implemented")
+}
+func (UnimplementedNotifyServiceServer) ReplayDeadLetter(context.Context, *ReplayDeadLetterRequest) (*ReplayDeadLetterResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReplayDeadLetter not implemented")
 }
 func (UnimplementedNotifyServiceServer) StreamLogs(*StreamLogsRequest, grpc.ServerStreamingServer[LogLine]) error {
 	return status.Error(codes.Unimplemented, "method StreamLogs not implemented")
@@ -335,6 +367,42 @@ func _NotifyService_GetStats_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NotifyService_ListDeadLetters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDeadLettersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotifyServiceServer).ListDeadLetters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotifyService_ListDeadLetters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotifyServiceServer).ListDeadLetters(ctx, req.(*ListDeadLettersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NotifyService_ReplayDeadLetter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplayDeadLetterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotifyServiceServer).ReplayDeadLetter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotifyService_ReplayDeadLetter_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotifyServiceServer).ReplayDeadLetter(ctx, req.(*ReplayDeadLetterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _NotifyService_StreamLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(StreamLogsRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -376,6 +444,14 @@ var NotifyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetStats",
 			Handler:    _NotifyService_GetStats_Handler,
+		},
+		{
+			MethodName: "ListDeadLetters",
+			Handler:    _NotifyService_ListDeadLetters_Handler,
+		},
+		{
+			MethodName: "ReplayDeadLetter",
+			Handler:    _NotifyService_ReplayDeadLetter_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
