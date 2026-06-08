@@ -30,7 +30,6 @@ func main() {
 	logging.Init()
 	ctx := context.Background()
 
-	// 1. Initialize Postgres
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		dbURL = defaultDatabaseURL
@@ -46,7 +45,6 @@ func main() {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 
-	// 2. Initialize NATS
 	natsURL := os.Getenv("NATS_URL")
 	if natsURL == "" {
 		natsURL = defaultNatsURL
@@ -57,14 +55,15 @@ func main() {
 	}
 	defer nc.Close()
 
-	// 3. Initialize Internal Services
 	eventHub := events.NewHub()
 	serviceStore := postgres.NewServiceStore(db)
 	jobStore := postgres.NewNotificationJobStore(db)
+	deadLetterStore := postgres.NewDeadLetterStore(db)
 
 	sched := retry.NewScheduler(retry.DefaultConfig()).
 		WithStore(jobStore).
-		WithNATS(nc)
+		WithNATS(nc).
+		WithDeadLetterStore(deadLetterStore)
 	go sched.Start(ctx)
 
 	w := worker.NewWorker(nc, jobStore)
@@ -72,7 +71,6 @@ func main() {
 		log.Fatalf("failed to start worker: %v", err)
 	}
 
-	// 4. Setup gRPC
 	listener, err := net.Listen("tcp", grpcPort)
 	if err != nil {
 		log.Fatalf("failed to listen on %s: %v", grpcPort, err)
@@ -86,7 +84,7 @@ func main() {
 
 	// Register services
 	healthv1.RegisterHealthServiceServer(grpcServer, server.NewHealthServer())
-	notifyServer := server.NewNotifyServer(eventHub, serviceStore, jobStore, nc)
+	notifyServer := server.NewNotifyServer(eventHub, serviceStore, jobStore, deadLetterStore, nc)
 	notifyv1.RegisterNotifyServiceServer(grpcServer, notifyServer)
 
 	reflection.Register(grpcServer)
