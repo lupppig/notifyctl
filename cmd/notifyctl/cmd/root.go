@@ -83,6 +83,15 @@ Send events, manage destinations, and monitor delivery status in real-time.`,
 			return initGRPCClient()
 		}
 
+		// DLQ inspection commands require auth (per-service operational data),
+		// but service-id is an optional filter rather than required.
+		if cmd.Parent() != nil && cmd.Parent().Name() == "dlq" {
+			if cfg.APIKey == "" {
+				return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use --auth-token)")
+			}
+			return initGRPCClient()
+		}
+
 		if cfg.APIKey == "" {
 			return fmt.Errorf("missing API key (set NOTIFYCTL_API_KEY or use --auth-token)")
 		}
